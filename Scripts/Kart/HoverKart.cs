@@ -94,7 +94,9 @@ public partial class HoverKart : RigidBody3D
             float displacement = BoosterRayLength - hitDistance;
 
             // Correct spring direction: local TargetPosition in world space
-            Vector3 springDir = booster.GlobalTransform.Basis * booster.Ray.TargetPosition.Normalized();
+            //Vector3 springDir = booster.GlobalTransform.Basis * booster.Ray.TargetPosition.Normalized();
+            
+            Vector3 springDir = GravityDirection.Normalized() * -1.0f; // Always up, opposite of gravity
             
             // Ensure direction is normalized; flip if needed (should point up, away from surface)
             springDir = springDir.Normalized();
@@ -116,9 +118,6 @@ public partial class HoverKart : RigidBody3D
 
             // Total force to apply: up toward desired hover point
             Vector3 totalForce = springDir * (springForce + dampForce);
-
-            // For quick test, make this extremely large:
-            totalForce = springDir * 10000; // Uncomment for debugging
             
             // Apply the force at the location of the booster
             state.ApplyForce(totalForce, localBoosterPos);

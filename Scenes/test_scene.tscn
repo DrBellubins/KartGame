@@ -71,6 +71,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2070642, 0)
 custom_integrator = true
 script = ExtResource("2_r5l72")
 GravityStrength = 2.0
+BoosterSpringStrength = 10000.0
+BoosterSpringDamp = 200.0
 Boosters = [NodePath("FrontLeftBooster"), NodePath("FrontRightBooster"), NodePath("BackLeftBooster"), NodePath("BackRightBooster")]
 
 [node name="BodyMesh" type="MeshInstance3D" parent="TestKart"]
