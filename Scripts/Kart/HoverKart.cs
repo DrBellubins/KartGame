@@ -16,8 +16,8 @@ public partial class HoverKart : RigidBody3D
     [Export] public float BoosterRayLength = 0.5f;
     [Export] public float BoosterSpringStrength = 400f;
     [Export] public float BoosterSpringDamp = 30f;
-    [Export] public float LinearDamp = 2.5f;
-    [Export] public float AngularDamp = 2.5f;
+    [Export] public float m_LinearDamp = 2.5f;
+    [Export] public float m_AngularDamp = 2.5f;
 
     [ExportCategory("Kart objects")]
     [Export] public HoverBooster FrontLeftBooster;
@@ -33,9 +33,9 @@ public partial class HoverKart : RigidBody3D
         FrontRightBooster.Ray.TargetPosition = new Vector3(0f, -BoosterRayLength, 0f);
         BackLeftBooster.Ray.TargetPosition = new Vector3(0f, -BoosterRayLength, 0f);
         BackRightBooster.Ray.TargetPosition = new Vector3(0f, -BoosterRayLength, 0f);
-
-        LinearDamp = this.LinearDamp;
-        AngularDamp = this.AngularDamp;
+        
+        LinearDamp = m_LinearDamp;
+        AngularDamp = m_AngularDamp;
     }
 
     public override void _Process(double delta)
@@ -46,15 +46,22 @@ public partial class HoverKart : RigidBody3D
 
     public override void _IntegrateForces(PhysicsDirectBodyState3D state)
     {
-        // 1. Custom omni-directional gravity (easily change direction later)
-        Vector3 gravity = GravityDirection.Normalized() * GravityStrength * Mass;
-        state.AddConstantCentralForce(gravity);
+        // 1. Gravity (omni-directional)
+        Vector3 gravity = GravityDirection.Normalized() * GravityStrength;
+        state.LinearVelocity += gravity * (float)state.Step;
 
-        // 2. Simple dampening (already set by LinearDamp/AngularDamp, but you can override here if needed)
-        //state.SetLinearVelocity(LinearVelocity * LinearDamp);
-        //state.SetAngularVelocity(AngularVelocity * AngularDamp);
+        // 2. Damping (manual; Godot does NOT handle this for custom integrator)
+        Vector3 curVel = state.LinearVelocity;
+        float linDamp = LinearDamp * (float)state.Step;
+        curVel -= curVel * linDamp;
+        state.LinearVelocity = curVel;
 
-        // 3. Apply hover spring forces at booster positions
+        Vector3 curAngVel = state.AngularVelocity;
+        float angDamp = AngularDamp * (float)state.Step;
+        curAngVel -= curAngVel * angDamp;
+        state.AngularVelocity = curAngVel;
+
+        // 3. Boosters (spring + damper)
         ApplyBoosterForce(state, FrontLeftBooster);
         ApplyBoosterForce(state, FrontRightBooster);
         ApplyBoosterForce(state, BackLeftBooster);
