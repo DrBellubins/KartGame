@@ -1,5 +1,6 @@
 using Godot;
 using System;
+using System.Collections.Generic;
 
 public partial class HoverKart : RigidBody3D
 {
@@ -20,28 +21,31 @@ public partial class HoverKart : RigidBody3D
     [Export] public float m_AngularDamp = 2.5f;
 
     [ExportCategory("Kart objects")]
-    [Export] public HoverBooster FrontLeftBooster;
-    [Export] public HoverBooster FrontRightBooster;
-    [Export] public HoverBooster BackLeftBooster;
-    [Export] public HoverBooster BackRightBooster;
+    [Export] public Godot.Collections.Array<HoverBooster> Boosters;
 
     public override void _Ready()
     {
         Mass = Weight;
 
-        FrontLeftBooster.Ray.TargetPosition = new Vector3(0f, -BoosterRayLength, 0f);
-        FrontRightBooster.Ray.TargetPosition = new Vector3(0f, -BoosterRayLength, 0f);
-        BackLeftBooster.Ray.TargetPosition = new Vector3(0f, -BoosterRayLength, 0f);
-        BackRightBooster.Ray.TargetPosition = new Vector3(0f, -BoosterRayLength, 0f);
+        foreach (var booster in Boosters)
+            booster.Ray.TargetPosition = new Vector3(0f, -BoosterRayLength, 0f);
         
         LinearDamp = m_LinearDamp;
         AngularDamp = m_AngularDamp;
+
+        DebugDraw3D.ScopedConfig().SetThickness(0f).SetCenterBrightness(0.1f);
     }
 
     public override void _Process(double delta)
     {
         // Update booster positions up and down depending on hit distance with min-max to be spring-like
         // This is just visual, so not implemented yet. Core physics is in _IntegrateForces.
+
+        foreach (var booster in Boosters)
+        {
+            Color color = booster.Ray.IsColliding() ? new Color(255, 0, 0) : new Color(0, 0, 255);
+            DebugDraw3D.DrawLine(booster.GlobalPosition, booster.GlobalPosition + booster.Ray.TargetPosition, color);
+        }
     }
 
     public override void _IntegrateForces(PhysicsDirectBodyState3D state)
@@ -62,47 +66,59 @@ public partial class HoverKart : RigidBody3D
         state.AngularVelocity = curAngVel;
 
         // 3. Boosters (spring + damper)
-        ApplyBoosterForce(state, FrontLeftBooster);
-        ApplyBoosterForce(state, FrontRightBooster);
-        ApplyBoosterForce(state, BackLeftBooster);
-        ApplyBoosterForce(state, BackRightBooster);
+        foreach (var booster in Boosters)
+            ApplyBoosterForce(state, booster);
     }
 
     private void ApplyBoosterForce(PhysicsDirectBodyState3D state, HoverBooster booster)
     {
-        // Make sure the booster and its Ray exist
+        // Null check
         if (booster == null || booster.Ray == null)
         {
             return;
         }
 
-        // Only apply force if the ray is colliding
+        // Only boost when ray hits something
         if (booster.Ray.IsColliding())
         {
-            // Get hit distance
-            float hitDistance = booster.Ray.GetCollisionPoint().DistanceTo(booster.GlobalTransform.Origin);
+            // Get booster world position
+            Vector3 boosterWorldPos = booster.GlobalTransform.Origin;
 
-            // Desired hover height = BoosterRayLength
+            // Get surface hit position
+            Vector3 hitPoint = booster.Ray.GetCollisionPoint();
+
+            // Calculate distance from booster to surface
+            float hitDistance = boosterWorldPos.DistanceTo(hitPoint);
+
+            // Spring displacement: positive means we need to push upward
             float displacement = BoosterRayLength - hitDistance;
 
-            // If within range, apply spring force
-            Vector3 springDir = booster.Ray.TargetPosition.Normalized();
-            Vector3 boosterPos = booster.GlobalTransform.Origin;
+            // Correct spring direction: local TargetPosition in world space
+            Vector3 springDir = booster.GlobalTransform.Basis * booster.Ray.TargetPosition.Normalized();
+            
+            // Ensure direction is normalized; flip if needed (should point up, away from surface)
+            springDir = springDir.Normalized();
 
-            // Velocity at booster position
-            Vector3 boosterVelocity = state.GetVelocityAtLocalPosition(boosterPos - GlobalTransform.Origin);
+            // The local position of the booster, from kart center
+            Vector3 localBoosterPos = boosterWorldPos - GlobalTransform.Origin;
 
-            // Spring force (Hooke's law)
+            // Get the velocity (linear) at the booster location
+            Vector3 boosterVelocity = state.GetVelocityAtLocalPosition(localBoosterPos);
+
+            // Project velocity onto spring direction to get vertical component
+            float verticalSpeed = boosterVelocity.Dot(springDir);
+
+            // Spring force using Hooke's law
             float springForce = displacement * BoosterSpringStrength;
 
-            // Damping force (to prevent oscillation)
-            float dampForce = -boosterVelocity.Dot(springDir) * BoosterSpringDamp;
+            // Damping force to prevent oscillation
+            float dampForce = -verticalSpeed * BoosterSpringDamp;
 
-            // Total force
-            Vector3 force = springDir * (springForce + dampForce);
+            // Total force to apply: up toward desired hover point
+            Vector3 totalForce = springDir * (springForce + dampForce);
 
-            // Apply force at booster position
-            state.ApplyForce(force, boosterPos - GlobalTransform.Origin);
+            // Apply the force at the location of the booster
+            state.ApplyForce(totalForce, localBoosterPos);
         }
     }
 }

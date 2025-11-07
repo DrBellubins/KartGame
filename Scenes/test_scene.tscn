@@ -66,14 +66,12 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 0)
 material_override = ExtResource("1_3dogw")
 mesh = SubResource("BoxMesh_6w285")
 
-[node name="TestKart" type="RigidBody3D" parent="." node_paths=PackedStringArray("FrontLeftBooster", "FrontRightBooster", "BackLeftBooster", "BackRightBooster")]
+[node name="TestKart" type="RigidBody3D" parent="." node_paths=PackedStringArray("Boosters")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2070642, 0)
 custom_integrator = true
 script = ExtResource("2_r5l72")
-FrontLeftBooster = NodePath("FrontLeftBooster")
-FrontRightBooster = NodePath("FrontRightBooster")
-BackLeftBooster = NodePath("BackLeftBooster")
-BackRightBooster = NodePath("BackRightBooster")
+GravityStrength = 2.0
+Boosters = [NodePath("FrontLeftBooster"), NodePath("FrontRightBooster"), NodePath("BackLeftBooster"), NodePath("BackRightBooster")]
 
 [node name="BodyMesh" type="MeshInstance3D" parent="TestKart"]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -0.5, 0, 1, -2.1855694e-08, 0, 0, 0)
