@@ -47,6 +47,7 @@ material_override = ExtResource("1_3dogw")
 mesh = SubResource("BoxMesh_6w285")
 
 [node name="TestKart" type="RigidBody3D" parent="." node_paths=PackedStringArray("FrontLeftBooster", "FrontRightBooster", "BackLeftBooster", "BackRightBooster")]
+custom_integrator = true
 script = ExtResource("2_r5l72")
 FrontLeftBooster = NodePath("FrontLeftBooster")
 FrontRightBooster = NodePath("FrontRightBooster")

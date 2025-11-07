@@ -30,6 +30,11 @@ public partial class HoverKart : RigidBody3D
 
     public override void _Process(double delta)
     {
-        
+        // Update booster positions up and down depending on hit distance with min-max to be spring-like
+    }
+
+    public override void _IntegrateForces(PhysicsDirectBodyState3D state)
+    {
+        // Since we're implementing our own omni-directional gravity, we need to override internal gravity/dampening
     }
 }
