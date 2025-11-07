@@ -4,9 +4,11 @@ using System;
 public partial class HoverKart : RigidBody3D
 {
     [ExportCategory("Kart specs")]
+    [Export] public float Speed = 10f;
+    [Export] public float Acceleration = 10f;
     [Export] public float Weight = 125f;
-    [Export] public float MaxSpeed = 10f;
-    [Export] public float MaxAcceleration = 10f;
+    [Export] public float Handling = 5f;
+    [Export] public float Traction = 5f;
 
     [ExportCategory("Kart physics")]
     [Export] public float Gravity = -9.81f;
