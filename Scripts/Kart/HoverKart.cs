@@ -122,7 +122,8 @@ public partial class HoverKart : RigidBody3D
             // Apply the force at the location of the booster
             //state.ApplyForce(totalForce, localBoosterPos);
             
-            Vector3 up = -GravityDirection.Normalized(); 
+            Vector3 up = -GravityDirection.Normalized();
+            state.LinearVelocity = up * 10f;
             state.ApplyForce(up * 10000f, boosterWorldPos - GlobalTransform.Origin);
         }
     }
