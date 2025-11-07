@@ -117,6 +117,9 @@ public partial class HoverKart : RigidBody3D
             // Total force to apply: up toward desired hover point
             Vector3 totalForce = springDir * (springForce + dampForce);
 
+            // For quick test, make this extremely large:
+            totalForce = springDir * 10000; // Uncomment for debugging
+            
             // Apply the force at the location of the booster
             state.ApplyForce(totalForce, localBoosterPos);
         }
