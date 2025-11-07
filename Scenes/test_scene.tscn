@@ -1,6 +1,8 @@
-[gd_scene load_steps=9 format=3 uid="uid://ht5x8s4lq2x0"]
+[gd_scene load_steps=10 format=3 uid="uid://ht5x8s4lq2x0"]
 
 [ext_resource type="Material" uid="uid://mvl1qs1x0dus" path="res://Materials/Checkerboard.tres" id="1_3dogw"]
+[ext_resource type="Script" uid="uid://dkvjuuucyv6oq" path="res://Scripts/Kart/HoverKart.cs" id="2_r5l72"]
+[ext_resource type="Script" uid="uid://dhxnks45ng5td" path="res://Scripts/Kart/HoverBooster.cs" id="3_50ct6"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_6w285"]
 size = Vector2(1000, 1000)
@@ -21,10 +23,6 @@ height = 1.5
 top_radius = 0.15
 bottom_radius = 0.15
 height = 0.1
-
-[sub_resource type="CylinderShape3D" id="CylinderShape3D_3dogw"]
-height = 0.1
-radius = 0.15
 
 [node name="TestScene" type="Node3D"]
 
@@ -48,7 +46,12 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 0)
 material_override = ExtResource("1_3dogw")
 mesh = SubResource("BoxMesh_6w285")
 
-[node name="TestKart" type="VehicleBody3D" parent="."]
+[node name="TestKart" type="RigidBody3D" parent="." node_paths=PackedStringArray("FrontLeftBooster", "FrontRightBooster", "BackLeftBooster", "BackRightBooster")]
+script = ExtResource("2_r5l72")
+FrontLeftBooster = NodePath("FrontLeftBooster")
+FrontRightBooster = NodePath("FrontRightBooster")
+BackLeftBooster = NodePath("BackLeftBooster")
+BackRightBooster = NodePath("BackRightBooster")
 
 [node name="BodyMesh" type="MeshInstance3D" parent="TestKart"]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -0.5, 0, 1, -2.1855694e-08, 0, 0, 0)
@@ -58,57 +61,45 @@ mesh = SubResource("CapsuleMesh_3dogw")
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0.107255846, 0)
 shape = SubResource("CapsuleShape3D_3dogw")
 
-[node name="WheelFrontLeft" type="VehicleWheel3D" parent="TestKart"]
+[node name="FrontLeftBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("Ray")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25, -0.25, -0.5)
+script = ExtResource("3_50ct6")
+Ray = NodePath("Ray")
 
-[node name="Mesh" type="MeshInstance3D" parent="TestKart/WheelFrontLeft"]
-transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 0, 0)
+[node name="Mesh" type="MeshInstance3D" parent="TestKart/FrontLeftBooster"]
 mesh = SubResource("CylinderMesh_3dogw")
 
-[node name="RigidBody3D" type="RigidBody3D" parent="TestKart/WheelFrontLeft"]
-transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 0, 0)
+[node name="Ray" type="RayCast3D" parent="TestKart/FrontLeftBooster"]
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="TestKart/WheelFrontLeft/RigidBody3D"]
-shape = SubResource("CylinderShape3D_3dogw")
-
-[node name="WheelFrontRight" type="VehicleWheel3D" parent="TestKart"]
+[node name="FrontRightBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("Ray")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, -0.25, -0.5)
+script = ExtResource("3_50ct6")
+Ray = NodePath("Ray")
 
-[node name="Mesh" type="MeshInstance3D" parent="TestKart/WheelFrontRight"]
-transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 0, 0)
+[node name="Mesh" type="MeshInstance3D" parent="TestKart/FrontRightBooster"]
 mesh = SubResource("CylinderMesh_3dogw")
 
-[node name="RigidBody3D" type="RigidBody3D" parent="TestKart/WheelFrontRight"]
-transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 0, 0)
+[node name="Ray" type="RayCast3D" parent="TestKart/FrontRightBooster"]
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="TestKart/WheelFrontRight/RigidBody3D"]
-shape = SubResource("CylinderShape3D_3dogw")
-
-[node name="WheelBackLeft" type="VehicleWheel3D" parent="TestKart"]
+[node name="BackLeftBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("Ray")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25, -0.25, 0.5)
+script = ExtResource("3_50ct6")
+Ray = NodePath("Ray")
 
-[node name="Mesh" type="MeshInstance3D" parent="TestKart/WheelBackLeft"]
-transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 0, 0)
+[node name="Mesh" type="MeshInstance3D" parent="TestKart/BackLeftBooster"]
 mesh = SubResource("CylinderMesh_3dogw")
 
-[node name="RigidBody3D" type="RigidBody3D" parent="TestKart/WheelBackLeft"]
-transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 0, 0)
+[node name="Ray" type="RayCast3D" parent="TestKart/BackLeftBooster"]
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="TestKart/WheelBackLeft/RigidBody3D"]
-shape = SubResource("CylinderShape3D_3dogw")
-
-[node name="WheelBackRight" type="VehicleWheel3D" parent="TestKart"]
+[node name="BackRightBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("Ray")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, -0.25, 0.5)
+script = ExtResource("3_50ct6")
+Ray = NodePath("Ray")
 
-[node name="Mesh" type="MeshInstance3D" parent="TestKart/WheelBackRight"]
-transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 0, 0)
+[node name="Mesh" type="MeshInstance3D" parent="TestKart/BackRightBooster"]
 mesh = SubResource("CylinderMesh_3dogw")
 
-[node name="RigidBody3D" type="RigidBody3D" parent="TestKart/WheelBackRight"]
-transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 0, 0)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="TestKart/WheelBackRight/RigidBody3D"]
-shape = SubResource("CylinderShape3D_3dogw")
+[node name="Ray" type="RayCast3D" parent="TestKart/BackRightBooster"]
 
 [node name="Camera3D" type="Camera3D" parent="TestKart"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 1.75)
