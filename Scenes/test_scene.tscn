@@ -1,18 +1,114 @@
-[gd_scene load_steps=3 format=3 uid="uid://ht5x8s4lq2x0"]
+[gd_scene load_steps=9 format=3 uid="uid://ht5x8s4lq2x0"]
+
+[ext_resource type="Material" uid="uid://mvl1qs1x0dus" path="res://Materials/Checkerboard.tres" id="1_3dogw"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_6w285"]
 size = Vector2(1000, 1000)
 
 [sub_resource type="WorldBoundaryShape3D" id="WorldBoundaryShape3D_3dogw"]
 
+[sub_resource type="BoxMesh" id="BoxMesh_6w285"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_3dogw"]
+radius = 0.25
+height = 1.5
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_3dogw"]
+radius = 0.25
+height = 1.5
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_3dogw"]
+top_radius = 0.15
+bottom_radius = 0.15
+height = 0.1
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_3dogw"]
+height = 0.1
+radius = 0.15
+
 [node name="TestScene" type="Node3D"]
 
 [node name="Floor" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
 
 [node name="Mesh" type="MeshInstance3D" parent="Floor"]
+material_override = ExtResource("1_3dogw")
 mesh = SubResource("PlaneMesh_6w285")
 
 [node name="Collider" type="StaticBody3D" parent="Floor"]
+visible = false
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Floor/Collider"]
 shape = SubResource("WorldBoundaryShape3D_3dogw")
+
+[node name="Cube" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Cube"]
+material_override = ExtResource("1_3dogw")
+mesh = SubResource("BoxMesh_6w285")
+
+[node name="TestKart" type="VehicleBody3D" parent="."]
+
+[node name="BodyMesh" type="MeshInstance3D" parent="TestKart"]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -0.5, 0, 1, -2.1855694e-08, 0, 0, 0)
+mesh = SubResource("CapsuleMesh_3dogw")
+
+[node name="Collider" type="CollisionShape3D" parent="TestKart"]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0.107255846, 0)
+shape = SubResource("CapsuleShape3D_3dogw")
+
+[node name="WheelFrontLeft" type="VehicleWheel3D" parent="TestKart"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25, -0.25, -0.5)
+
+[node name="Mesh" type="MeshInstance3D" parent="TestKart/WheelFrontLeft"]
+transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("CylinderMesh_3dogw")
+
+[node name="RigidBody3D" type="RigidBody3D" parent="TestKart/WheelFrontLeft"]
+transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TestKart/WheelFrontLeft/RigidBody3D"]
+shape = SubResource("CylinderShape3D_3dogw")
+
+[node name="WheelFrontRight" type="VehicleWheel3D" parent="TestKart"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, -0.25, -0.5)
+
+[node name="Mesh" type="MeshInstance3D" parent="TestKart/WheelFrontRight"]
+transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("CylinderMesh_3dogw")
+
+[node name="RigidBody3D" type="RigidBody3D" parent="TestKart/WheelFrontRight"]
+transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TestKart/WheelFrontRight/RigidBody3D"]
+shape = SubResource("CylinderShape3D_3dogw")
+
+[node name="WheelBackLeft" type="VehicleWheel3D" parent="TestKart"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25, -0.25, 0.5)
+
+[node name="Mesh" type="MeshInstance3D" parent="TestKart/WheelBackLeft"]
+transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("CylinderMesh_3dogw")
+
+[node name="RigidBody3D" type="RigidBody3D" parent="TestKart/WheelBackLeft"]
+transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TestKart/WheelBackLeft/RigidBody3D"]
+shape = SubResource("CylinderShape3D_3dogw")
+
+[node name="WheelBackRight" type="VehicleWheel3D" parent="TestKart"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, -0.25, 0.5)
+
+[node name="Mesh" type="MeshInstance3D" parent="TestKart/WheelBackRight"]
+transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("CylinderMesh_3dogw")
+
+[node name="RigidBody3D" type="RigidBody3D" parent="TestKart/WheelBackRight"]
+transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TestKart/WheelBackRight/RigidBody3D"]
+shape = SubResource("CylinderShape3D_3dogw")
+
+[node name="Camera3D" type="Camera3D" parent="TestKart"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 1.75)

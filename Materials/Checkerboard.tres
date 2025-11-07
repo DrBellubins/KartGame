@@ -1,0 +1,9 @@
+[gd_resource type="StandardMaterial3D" load_steps=2 format=3 uid="uid://mvl1qs1x0dus"]
+
+[ext_resource type="Texture2D" uid="uid://d4au3udb6wb7p" path="res://Materials/Textures/Checkerboard.png" id="1_osoj6"]
+
+[resource]
+albedo_texture = ExtResource("1_osoj6")
+uv1_offset = Vector3(0.5, 0.5, 0.5)
+uv1_triplanar = true
+uv1_world_triplanar = true
