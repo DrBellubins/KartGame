@@ -69,8 +69,27 @@ public partial class HoverKart : RigidBody3D
         foreach (var booster in Boosters)
             ApplyBoosterForce(state, booster);
     }
-
+    
     private void ApplyBoosterForce(PhysicsDirectBodyState3D state, HoverBooster booster)
+    {
+        if (booster == null || booster.Ray == null)
+        {
+            return;
+        }
+
+        if (booster.Ray.IsColliding())
+        {
+            Vector3 up = -GravityDirection.Normalized();
+
+            Vector3 offset = booster.GlobalTransform.Origin - GlobalTransform.Origin;
+        
+            GD.Print($"ApplyForce: force={up * 10000f}, offset={offset}, mass={Mass}");
+
+            state.ApplyForce(up * 10000f, offset);
+        }
+    }
+
+    /*private void ApplyBoosterForce(PhysicsDirectBodyState3D state, HoverBooster booster)
     {
         // Null check
         if (booster == null || booster.Ray == null)
@@ -126,5 +145,5 @@ public partial class HoverKart : RigidBody3D
             state.LinearVelocity = up * 10f;
             state.ApplyForce(up * 10000f, boosterWorldPos - GlobalTransform.Origin);
         }
-    }
+    }*/
 }
