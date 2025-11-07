@@ -120,7 +120,10 @@ public partial class HoverKart : RigidBody3D
             Vector3 totalForce = springDir * (springForce + dampForce);
             
             // Apply the force at the location of the booster
-            state.ApplyForce(totalForce, localBoosterPos);
+            //state.ApplyForce(totalForce, localBoosterPos);
+            
+            Vector3 up = -GravityDirection.Normalized(); 
+            state.ApplyForce(up * 10000f, boosterWorldPos - GlobalTransform.Origin);
         }
     }
 }
