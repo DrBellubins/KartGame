@@ -66,14 +66,19 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 0)
 material_override = ExtResource("1_3dogw")
 mesh = SubResource("BoxMesh_6w285")
 
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(0.7071067, 0, -0.7071068, 0, 1, 0, 0.7071068, 0, 0.7071067, -2.575114, 0.70874786, 0.9363543)
+
 [node name="TestKart" type="RigidBody3D" parent="." node_paths=PackedStringArray("Boosters")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2070642, 0)
 custom_integrator = true
 script = ExtResource("2_r5l72")
 GravityStrength = 2.0
-BoosterSpringStrength = 1000.0
+BoosterRayLength = 0.2
+BoosterSpringStrength = 10000.0
+BoosterSpringDamp = 0.0
 m_LinearDamp = 0.1
-m_AngularDamp = 0.1
+m_AngularDamp = 0.0
 Boosters = [NodePath("FrontLeftBooster"), NodePath("FrontRightBooster"), NodePath("BackLeftBooster"), NodePath("BackRightBooster")]
 
 [node name="BodyMesh" type="MeshInstance3D" parent="TestKart"]
@@ -127,9 +132,6 @@ Mesh = NodePath("Mesh")
 mesh = SubResource("CylinderMesh_3dogw")
 
 [node name="Ray" type="RayCast3D" parent="TestKart/BackRightBooster"]
-
-[node name="Camera3D" type="Camera3D" parent="TestKart"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 1.75)
 
 [node name="CSGBox3D" type="CSGBox3D" parent="."]
 transform = Transform3D(0.9999992, 0, 0.0012566447, -0.00043313488, 0.93872184, 0.34467542, -0.0011796398, -0.3446757, 0.9387211, 0.009941995, -0.32617176, -0.04090607)
