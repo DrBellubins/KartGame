@@ -75,7 +75,7 @@ Distance = 2.0
 Height = 0.5
 
 [node name="TestKart" type="RigidBody3D" parent="." node_paths=PackedStringArray("Boosters")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.05734092, 1.2070642, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.05734092, 0.08123428, -2.1368475)
 custom_integrator = true
 script = ExtResource("2_r5l72")
 Speed = 50.0
@@ -102,7 +102,6 @@ script = ExtResource("3_50ct6")
 IsFront = true
 Ray = NodePath("Ray")
 Mesh = NodePath("Mesh")
-NormalRotationSpeed = 0.0
 
 [node name="Mesh" type="MeshInstance3D" parent="TestKart/FrontLeftBooster"]
 mesh = SubResource("CylinderMesh_3dogw")

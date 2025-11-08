@@ -2,8 +2,8 @@
 
 [ext_resource type="Material" uid="uid://mvl1qs1x0dus" path="res://Materials/Checkerboard.tres" id="1_3dogw"]
 [ext_resource type="Script" uid="uid://c3f8xo72d26vk" path="res://Scripts/Kart/SmoothFollowCamera.cs" id="2_hb2xm"]
-[ext_resource type="Script" uid="uid://dkvjuuucyv6oq" path="res://Scripts/Kart/HoverKart.cs" id="2_r5l72"]
 [ext_resource type="Script" uid="uid://dhxnks45ng5td" path="res://Scripts/Kart/HoverBooster.cs" id="3_50ct6"]
+[ext_resource type="Script" uid="uid://cp1sgtmnhcu1e" path="res://Scripts/Kart/HoverKartNew.cs" id="3_hb2xm"]
 
 [sub_resource type="PhysicalSkyMaterial" id="PhysicalSkyMaterial_50ct6"]
 energy_multiplier = 4.0
@@ -77,15 +77,7 @@ Height = 0.5
 [node name="TestKart" type="RigidBody3D" parent="." node_paths=PackedStringArray("Boosters")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.05734092, 1.2070642, 0)
 custom_integrator = true
-script = ExtResource("2_r5l72")
-Speed = 50.0
-MaxSpeed = 200.0
-Traction = 2.0
-BoosterRayLength = 0.4
-BoosterSpringStrength = 10000.0
-BoosterSpringDamp = 1000.0
-m_LinearDamp = 0.5
-m_AngularDamp = 0.05
+script = ExtResource("3_hb2xm")
 Boosters = [NodePath("FrontLeftBooster"), NodePath("FrontRightBooster"), NodePath("BackLeftBooster"), NodePath("BackRightBooster")]
 
 [node name="BodyMesh" type="MeshInstance3D" parent="TestKart"]

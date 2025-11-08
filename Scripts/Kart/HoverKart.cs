@@ -46,15 +46,6 @@ public partial class HoverKart : RigidBody3D
             Input.GetAxis("backward", "forward"));
 
         drifting = Input.IsActionPressed("drift");
-
-        // Update booster positions up and down depending on hit distance with min-max to be spring-like
-        // This is just visual, so not implemented yet. Core physics is in _IntegrateForces.
-
-        /*foreach (var booster in Boosters)
-        {
-            Color color = booster.Ray.IsColliding() ? new Color(255, 0, 0) : new Color(0, 0, 255);
-            DebugDraw3D.DrawLine(booster.GlobalPosition, booster.GlobalPosition + booster.Ray.TargetPosition, color);
-        }*/
     }
 
     Vector3 kartVelocity = Vector3.Zero;
