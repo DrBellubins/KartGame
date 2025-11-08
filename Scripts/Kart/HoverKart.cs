@@ -99,6 +99,7 @@ public partial class HoverKart : RigidBody3D
             // Forward/backward movement along kart's local "forward" (usually -Z)
             Vector3 forward = -GlobalTransform.Basis.Z.Normalized();
             Vector3 right = GlobalTransform.Basis.X.Normalized();
+            Vector3 up = GlobalTransform.Basis.Y.Normalized();
 
             // Calculate drive force
             float driveInput = inputAxis.Y; // Godot: Y is forward
@@ -112,7 +113,6 @@ public partial class HoverKart : RigidBody3D
             
             if (Mathf.Abs(steerInput) > 0.01f)
             {
-                Vector3 up = GlobalTransform.Basis.Y.Normalized();
                 float steerAmount = steerInput * Handling; // Scale by handling stat
 
                 // Apply torque for steering (add a "spin" to the kart around up axis)
@@ -121,7 +121,24 @@ public partial class HoverKart : RigidBody3D
                 if (drifting)
                     state.AngularVelocity += up * steerAmount * step;
                 else
-                    // forward booster relative steering
+                {
+                    // Regular steering: apply lateral force at front boosters!
+                    foreach (var booster in Boosters)
+                    {
+                        // Only apply to FRONT boosters; assuming names (set in your scene)
+                        if (booster.IsFront)
+                        {
+                            // Small corrective force sideways (lateral)
+                            Vector3 boosterWorldPos = booster.GlobalTransform.Origin;
+                            
+                            // Lateral force: X axis (right). Yaw steer input reverses on Mario Kart etc so you may want a sign flip.
+                            Vector3 lateralForce = right * steerAmount * 0.5f * Mass; // 0.5 is an arbitrary scale, tune as needed
+                            
+                            // Apply impulse: F = ma, impulse = F * dt
+                            state.ApplyImpulse(boosterWorldPos - GlobalTransform.Origin, lateralForce * step);
+                        }
+                    }
+                }
             }
         }
 

@@ -96,6 +96,7 @@ shape = SubResource("CapsuleShape3D_3dogw")
 [node name="FrontLeftBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("Ray", "Mesh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25, -0.25, -0.5)
 script = ExtResource("3_50ct6")
+IsFront = true
 Ray = NodePath("Ray")
 Mesh = NodePath("Mesh")
 
@@ -107,6 +108,7 @@ mesh = SubResource("CylinderMesh_3dogw")
 [node name="FrontRightBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("Ray", "Mesh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, -0.25, -0.5)
 script = ExtResource("3_50ct6")
+IsFront = true
 Ray = NodePath("Ray")
 Mesh = NodePath("Mesh")
 

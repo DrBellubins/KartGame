@@ -3,6 +3,7 @@ using System;
 
 public partial class HoverBooster : Node3D
 {
+    [Export] public bool IsFront;
     [Export] public RayCast3D Ray;
     [Export] public MeshInstance3D Mesh;
 }
