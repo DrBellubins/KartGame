@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3 uid="uid://ht5x8s4lq2x0"]
+[gd_scene load_steps=13 format=3 uid="uid://ht5x8s4lq2x0"]
 
 [ext_resource type="Material" uid="uid://mvl1qs1x0dus" path="res://Materials/Checkerboard.tres" id="1_3dogw"]
 [ext_resource type="Script" uid="uid://c3f8xo72d26vk" path="res://Scripts/Kart/SmoothFollowCamera.cs" id="2_hb2xm"]
@@ -22,8 +22,6 @@ adjustment_contrast = 1.3
 size = Vector2(1000, 1000)
 
 [sub_resource type="WorldBoundaryShape3D" id="WorldBoundaryShape3D_3dogw"]
-
-[sub_resource type="BoxMesh" id="BoxMesh_6w285"]
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_3dogw"]
 radius = 0.25
@@ -59,13 +57,6 @@ visible = false
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Floor/Collider"]
 shape = SubResource("WorldBoundaryShape3D_3dogw")
-
-[node name="Cube" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 0)
-
-[node name="Mesh" type="MeshInstance3D" parent="Cube"]
-material_override = ExtResource("1_3dogw")
-mesh = SubResource("BoxMesh_6w285")
 
 [node name="Camera3D" type="Camera3D" parent="." node_paths=PackedStringArray("Target")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.75, 2)
@@ -146,3 +137,9 @@ mesh = SubResource("CylinderMesh_3dogw")
 transform = Transform3D(0.9999992, 0, 0.0012566447, -0.00043313488, 0.93872184, 0.34467542, -0.0011796398, -0.3446757, 0.9387211, 0.009941995, -0.32617176, -0.04090607)
 use_collision = true
 size = Vector3(1, 0.34765625, 1.7628174)
+
+[node name="CSGBox3D2" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 2, -4)
+use_collision = true
+size = Vector3(1, 5, 10)
+material = ExtResource("1_3dogw")

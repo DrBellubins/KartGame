@@ -16,6 +16,7 @@ public partial class HoverKart : RigidBody3D
     [Export] public float GravityStrength = 9.81f;
     [Export] public Vector3 GravityDirection = new Vector3(0f, -1f, 0f);
     [Export] public float BoosterRayLength = 0.5f;
+    [Export] public float BoosterMidPointDist = 0.25f;  // Equilibrium distance for hover; ray checks against this midpoint
     [Export] public float BoosterSpringStrength = 400f;
     [Export] public float BoosterSpringDamp = 30f;
     [Export] public float m_LinearDamp = 2.5f;
@@ -26,16 +27,25 @@ public partial class HoverKart : RigidBody3D
 
     private bool drifting = false;
     private Vector2 inputAxis = Vector2.Zero;
+
+    // Persistent velocity and angular velocity for custom integration
+    private Vector3 kartVelocity = Vector3.Zero;
+    private Vector3 kartTorque = Vector3.Zero;
     
     public override void _Ready()
     {
         Mass = Weight;
 
         foreach (var booster in Boosters)
-            booster.Ray.TargetPosition = new Vector3(0f, -BoosterRayLength, 0f);
-        
-        LinearDamp = m_LinearDamp;
-        AngularDamp = m_AngularDamp;
+        {
+            if (booster?.Ray != null)
+            {
+                booster.Ray.TargetPosition = new Vector3(0f, -BoosterRayLength, 0f);
+            }
+        }
+
+        // Note: Do not set LinearDamp/AngularDamp on the body, as we handle damping manually
+        // and the engine skips built-in damping in custom _IntegrateForces
 
         DebugDraw3D.ScopedConfig().SetThickness(0f).SetCenterBrightness(0.1f);
     }
@@ -48,164 +58,198 @@ public partial class HoverKart : RigidBody3D
         drifting = Input.IsActionPressed("drift");
     }
 
-    Vector3 kartVelocity = Vector3.Zero;
-    Vector3 kartTorque = Vector3.Zero;
-    
     public override void _IntegrateForces(PhysicsDirectBodyState3D state)
     {
+        // Sync with current physics state velocities at the start of this step
+        // (Redundant if maintaining fields manually, but ensures sync if external changes occur)
         float step = (float)state.Step;
-        
-        // 1. Gravity (omni-directional): Manually add to velocity
-        Vector3 gravity = GravityDirection.Normalized() * GravityStrength;
-        kartVelocity += gravity * step;
+        kartVelocity = state.LinearVelocity;
+        kartTorque = state.AngularVelocity;
 
-        // 2. Damping (manual; Godot does NOT handle this for custom integrator)
-        Vector3 curVel = kartVelocity;
-        float linDamp = LinearDamp * step;
-        curVel -= curVel * linDamp;
-        kartVelocity = curVel;
+        // Apply physics steps in sequence to match original order
+        ApplyGravity(step);
+        ApplyDamping(step);
+        ApplyMovement(step);  // Apply movement before boosters to match original
 
-        Vector3 curAngVel = kartTorque;
-        float angDamp = AngularDamp * step;
-        curAngVel -= curAngVel * angDamp;
-        kartTorque = curAngVel;
+        // Clamp after movement but before boosters (original clamps old state ineffectively;
+        // this clamps the updated kartVelocity for intended behavior)
+        ClampMaxSpeed();
 
-        // 3. Boosters (spring + damper): Manually integrate forces into velocity
-        // (Accumulate total booster force/torque for simplicity; apply at end)
-        Vector3 totalBoosterForce = Vector3.Zero;
-        Vector3 totalBoosterTorque = Vector3.Zero;
+        ApplyBoosterForces(state, step);  // Boosters last, as in original
 
-        foreach (var booster in Boosters)
-        {
-            // Null check
-            if (booster == null || booster.Ray == null)
-            {
-                continue;
-            }
-
-            applyBosterForce(state, booster, ref totalBoosterForce, ref totalBoosterTorque);
-        }
-        
-        // 4. Movement (add kart driving force based on inputAxis)
-        // inputAxis.X = left/right (steering)
-        // inputAxis.Y = forward/back
-        if (inputAxis.LengthSquared() > 0.0001f)
-        {
-            Vector3 forward = -GlobalTransform.Basis.Z.Normalized();
-            Vector3 right = GlobalTransform.Basis.X.Normalized();
-            Vector3 up = GlobalTransform.Basis.Y.Normalized();
-
-            // Steering: apply torque to turn (around local up)
-            float steerInput = inputAxis.X;
-            
-            if (Mathf.Abs(steerInput) > 0.01f)
-            {
-                float steerAmount = steerInput * Handling; // Scale by handling stat
-                
-                // Apply torque for steering (add a "spin" to the kart around up axis)
-                // You can tweak the divisor for tuning how quick it turns.
-                kartTorque += up * steerAmount * step;
-            }
-            
-            // Forward/backward movement along kart's local "forward" (usually -Z)
-            // Calculate drive force
-            float driveInput = inputAxis.Y;
-            
-            // Determine the forward driving force, modulated by Speed stat
-            float currentForwardSpeed = kartVelocity.Dot(forward);
-
-            // Only apply drive force if not exceeding Speed (stat)
-            float targetSpeed = Mathf.Min(Speed, MaxSpeed); // Respect the smaller of Speed and MaxSpeed
-
-            // If drive input is positive (forwards)
-            if (driveInput > 0 && currentForwardSpeed < targetSpeed)
-            {
-                // As you approach Speed, gradually reduce force
-                float speedFactor = Mathf.Clamp((targetSpeed - currentForwardSpeed) / targetSpeed,  0f, 1f);
-                Vector3 driveForce = forward * driveInput * Acceleration * Mass * speedFactor;
-                kartVelocity += (driveForce / Mass) * step;
-            }
-            else if (driveInput < 0 && currentForwardSpeed > -targetSpeed)
-            {
-                // Similarly, for reverse input (optional: might want a different reverse limit/stat)
-                float speedFactor = Mathf.Clamp((targetSpeed + currentForwardSpeed) / targetSpeed, 0f, 1f);
-                Vector3 driveForce = forward * driveInput * Acceleration * Mass * speedFactor;
-                kartVelocity += (driveForce / Mass) * step;
-            }
-            
-            if (!drifting)
-            {
-                // Project velocity onto right vector to get lateral (sideways) speed
-                float lateralSpeed = kartVelocity.Dot(right);
-
-                // Calculate the lateral (sideways) velocity vector
-                Vector3 lateralVel = right * lateralSpeed;
-
-                // Determine damp factor (Traction controls how much is removed, can tune this)
-                // Higher Traction results in more aggressive correction
-                float sideDamp = Traction * step;
-
-                // Apply damping: counteract the lateral velocity
-                kartVelocity -= lateralVel * sideDamp;
-            }
-        }
-
-        // Clamp to max speed, this might be universal for all karts
-        if (state.LinearVelocity.Length() > MaxSpeed)
-            state.LinearVelocity = state.LinearVelocity.Normalized() * MaxSpeed;
-        
-        kartVelocity +=  (totalBoosterForce / Mass) * step;
-        kartTorque += (totalBoosterTorque / Mass) * step * 0.1f;
-        
+        // Update state with integrated values
         state.LinearVelocity = kartVelocity;
         state.AngularVelocity = kartTorque;
     }
 
-    private void applyBosterForce(PhysicsDirectBodyState3D state, HoverBooster booster, ref Vector3 totalBoosterForce, ref Vector3 totalBoosterTorque)
+    // Applies omni-directional gravity to the kart's velocity
+    private void ApplyGravity(float step)
     {
-        // Get booster world position
-        Vector3 boosterWorldPos = booster.GlobalTransform.Origin;
+        Vector3 gravity = GravityDirection.Normalized() * GravityStrength;
+        kartVelocity += gravity * step;
+    }
 
-        // Get surface hit position and normal (use normal for curved surfaces; fallback to -gravity)
+    // Applies manual linear and angular damping to prevent excessive motion
+    private void ApplyDamping(float step)
+    {
+        // Linear damping (exponential decay)
+        float linDamp = m_LinearDamp * step;
+        kartVelocity *= (1f - linDamp);
+
+        // Angular damping
+        float angDamp = m_AngularDamp * step;
+        kartTorque *= (1f - angDamp);
+    }
+
+    // Handles input-based steering, driving, and traction (lateral damping unless drifting)
+    private void ApplyMovement(float step)
+    {
+        if (inputAxis.LengthSquared() <= 0.0001f)
+        {
+            return; // No input
+        }
+
+        Vector3 forward = -GlobalTransform.Basis.Z.Normalized();
+        Vector3 right = GlobalTransform.Basis.X.Normalized();
+        Vector3 up = GlobalTransform.Basis.Y.Normalized();
+
+        // Steering: add angular velocity increment around local up
+        float steerInput = inputAxis.X;
+        if (Mathf.Abs(steerInput) > 0.01f)
+        {
+            float steerAmount = steerInput * Handling;
+            kartTorque += up * steerAmount * step;
+        }
+
+        // Driving: accelerate/decelerate along forward, respecting target speed
+        float driveInput = inputAxis.Y;
+        float currentForwardSpeed = kartVelocity.Dot(forward);
+        float targetSpeed = Mathf.Min(Speed, MaxSpeed); // Cruise speed limit
+
+        Vector3 driveForce = Vector3.Zero;
+        if (driveInput > 0f && currentForwardSpeed < targetSpeed)
+        {
+            // Forward acceleration with speed ramping
+            float speedFactor = Mathf.Clamp((targetSpeed - currentForwardSpeed) / targetSpeed, 0f, 1f);
+            driveForce = forward * driveInput * Acceleration * Mass * speedFactor;
+        }
+        else if (driveInput < 0f && currentForwardSpeed > -targetSpeed)
+        {
+            // Reverse (symmetric for simplicity)
+            float speedFactor = Mathf.Clamp((targetSpeed + currentForwardSpeed) / targetSpeed, 0f, 1f);
+            driveForce = forward * driveInput * Acceleration * Mass * speedFactor;
+        }
+
+        if (driveForce != Vector3.Zero)
+        {
+            kartVelocity += (driveForce / Mass) * step;
+        }
+
+        // Traction: damp lateral (sideways) velocity unless drifting
+        if (!drifting)
+        {
+            float lateralSpeed = kartVelocity.Dot(right);
+            Vector3 lateralVel = right * lateralSpeed;
+            float sideDamp = Traction * step;
+            kartVelocity -= lateralVel * sideDamp;
+        }
+    }
+
+    // Clamps overall linear speed to MaxSpeed (absolute cap)
+    // Placed after movement to approximate original intent (clamps updated velocity)
+    private void ClampMaxSpeed()
+    {
+        if (kartVelocity.Length() > MaxSpeed)
+        {
+            kartVelocity = kartVelocity.Normalized() * MaxSpeed;
+        }
+    }
+
+    // Applies forces and torques from all hover boosters
+    // Only applies if ray collides; skips non-colliding boosters (no force when ray misses)
+    private void ApplyBoosterForces(PhysicsDirectBodyState3D state, float step)
+    {
+        Vector3 totalForce = Vector3.Zero;
+        Vector3 totalTorque = Vector3.Zero;
+
+        foreach (var booster in Boosters)
+        {
+            if (booster?.Ray == null)
+            {
+                continue; // Skip if null
+            }
+
+            ApplySingleBoosterForce(state, booster, ref totalForce, ref totalTorque);
+        }
+
+        // Integrate forces (F * dt / mass) and torques (approximate with mass scaling)
+        kartVelocity += totalForce / Mass * step;
+        kartTorque += totalTorque / Mass * step * 0.1f; // 0.1f is a tuning factor for torque sensitivity
+    }
+
+    // Applies spring + damper force for a single booster and accumulates torque
+    // Refactored logic:
+    // - Only if ray collides (hit within BoosterRayLength): compute forces
+    // - BoosterRayLength: max ray cast distance
+    // - BoosterMidPointDist: equilibrium hover distance
+    // - If hitDistance < BoosterMidPointDist: push away from surface (+spring along surface normal)
+    // - If hitDistance > BoosterMidPointDist: pull toward surface (-spring along surface normal)
+    // - Damping always opposes separation velocity along surface normal for stability
+    // - No force if !colliding (ray misses entirely)
+    private void ApplySingleBoosterForce(PhysicsDirectBodyState3D state, HoverBooster booster, ref Vector3 totalForce, ref Vector3 totalTorque)
+    {
+        bool colliding = booster.Ray.IsColliding();
+        if (!colliding)
+        {
+            return; // No booster force if ray doesn't hit anything
+        }
+
+        Vector3 boosterWorldPos = booster.GlobalPosition;
         Vector3 hitPoint = booster.Ray.GetCollisionPoint();
         Vector3 surfaceNormal = booster.Ray.GetCollisionNormal();
-        Vector3 springDir = Vector3.Zero;
-        
-        // If ray hitting push up, else pull down.
-        if (booster.Ray.IsColliding())
-            springDir = surfaceNormal.Normalized();
-        else
-            springDir = -surfaceNormal.Normalized();
 
-        // Calculate distance from booster to surface
+        // Calculate actual hit distance
         float hitDistance = boosterWorldPos.DistanceTo(hitPoint);
 
-        // Spring displacement: positive means we need to push away from surface
-        float displacement = BoosterRayLength - hitDistance;
-        displacement = Mathf.Clamp(displacement, 0f, BoosterRayLength);  // Prevent pulling down if ray misses slightly
+        // Local position for velocity at point of contact (relative to kart; assumes booster is child)
+        Vector3 localBoosterPos = booster.Position;
 
-        // The local position of the booster, from kart center (for torque)
-        Vector3 localBoosterPos = boosterWorldPos - GlobalTransform.Origin;
-
-        // Get the velocity (linear) at the booster location
+        // Get the velocity at the booster location
         Vector3 boosterVelocity = state.GetVelocityAtLocalPosition(localBoosterPos);
 
-        // Project velocity onto spring direction to get component away from surface
-        float relativeSpeed = boosterVelocity.Dot(springDir);
+        // Surface direction: always away from surface (for consistent damping reference)
+        Vector3 surfaceDir = surfaceNormal.Normalized();
 
-        // Spring force using Hooke's law
-        float springForce = displacement * BoosterSpringStrength;
+        // Separation speed: positive if moving away from surface
+        float separationSpeed = boosterVelocity.Dot(surfaceDir);
 
-        // Damping force to prevent oscillation
-        float dampForce = -relativeSpeed * BoosterSpringDamp;
+        // Spring force scalar: positive for push away, negative for pull toward
+        float springForce = 0f;
+        if (hitDistance < BoosterMidPointDist)
+        {
+            // Too close: push away from surface
+            float displacement = BoosterMidPointDist - hitDistance;
+            springForce = displacement * BoosterSpringStrength;
+        }
+        else if (hitDistance > BoosterMidPointDist)
+        {
+            // Too far: pull toward surface
+            float displacement = hitDistance - BoosterMidPointDist;
+            springForce = -displacement * BoosterSpringStrength;
+        }
+        // Else: at equilibrium, zero spring force
 
-        // Total force to apply: away from surface toward desired hover point
-        Vector3 boosterForce = springDir * (springForce + dampForce);
+        // Damping force: opposes separation (pushes away if penetrating, pulls back if separating)
+        float dampForce = -separationSpeed * BoosterSpringDamp;
+
+        // Total force along surface normal
+        Vector3 boosterForce = surfaceDir * (springForce + dampForce);
 
         // Accumulate central force
-        totalBoosterForce += boosterForce;
+        totalForce += boosterForce;
 
-        // Accumulate torque (force cross local position)
-        totalBoosterTorque += localBoosterPos.Cross(boosterForce);
+        // Torque: r cross F (world space)
+        Vector3 rWorld = boosterWorldPos - GlobalPosition;
+        totalTorque += rWorld.Cross(boosterForce);
     }
 }
