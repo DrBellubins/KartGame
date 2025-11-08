@@ -12,11 +12,12 @@ public partial class HoverBooster : Node3D
     [Export] public float DistanceBobbingSpeed = 8f;
     [Export] public float NormalRotationSpeed = 10f;
     [Export] public float DistanceBobbingMax = 0.25f;
-    [Export] public float NormalRotationAngleMax = 45f; // In degrees
+    [Export] public float NormalRotationAngleMax = 45f; // Max angular speed in degrees per second
 
-    // For smoothing movement/rotation
+    // Store for smoothing and for fallback if not colliding
     private float _currentZOffset = 0f;
     private Vector3 _currentNormal = Vector3.Up;
+    private Vector3 _lastValidNormal = Vector3.Up;
 
     public override void _Process(double delta)
     {
@@ -25,106 +26,140 @@ public partial class HoverBooster : Node3D
             return;
         }
 
-        // Determine desired distance offset
-        float hitDist = 0f;
+        // Get kart reference for consistent forward/right directions
+        HoverKart kart = GetParent<HoverKart>();
+        if (kart == null)
+        {
+            return;
+        }
+        Vector3 kartForward = -kart.GlobalTransform.Basis.Z.Normalized();
+        Vector3 kartRight = kart.GlobalTransform.Basis.X.Normalized();
 
+        // Determine desired distance offset (bobbing based on compression)
+        // When not colliding, assume full extension (no compression, no bobbing)
+        float rayLen = Ray.TargetPosition.Length();
+        float hitDist = rayLen; // Default to full length (no hit = no compression)
         if (Ray.Enabled && Ray.IsColliding())
         {
             hitDist = GlobalTransform.Origin.DistanceTo(Ray.GetCollisionPoint());
         }
 
-        // Bobbing: offset along local Y axis based on how close the booster is to the surface
-        float targetYOffset = 0f;
-
-        if (Ray.Enabled && Ray.IsColliding())
-        {
-            float rayLen = Ray.TargetPosition.Length();
-            float ratio = Mathf.Clamp((rayLen - hitDist) / rayLen, 0.0f, 1.0f);
-            targetYOffset = ratio * DistanceBobbingMax;
-        }
-
-        // Smooth interpolation for bobbing
+        // Smooth bobbing: ratio 1.0 = fully compressed (bob max), 0.0 = extended (no bob)
+        float ratio = Mathf.Clamp((rayLen - hitDist) / rayLen, 0.0f, 1.0f);
+        float targetYOffset = ratio * DistanceBobbingMax;
         _currentZOffset = Mathf.Lerp(_currentZOffset, targetYOffset, 1.0f - Mathf.Exp(-DistanceBobbingSpeed * (float)delta));
+        
+        // Bobbing offset along the current normal (surface-relative, for consistency on slopes)
+        Vector3 bobOffset = _currentNormal * _currentZOffset;
+        Vector3 meshOrigin = Vector3.Zero + bobOffset;
 
-        Vector3 meshOrigin = Vector3.Zero + (Vector3.Up * _currentZOffset);
+        // --- Safe & Robust Normal Animation ---
+        Vector3 targetNormal;
 
-        // Get the new normal from the raycast, or just Up if no hit
-        Vector3 targetNormal = Vector3.Up;
         if (Ray.Enabled && Ray.IsColliding())
         {
-            targetNormal = Ray.GetCollisionNormal();
-        }
-
-        // Defensive: avoid nearly zero-length vectors!
-        if (targetNormal.LengthSquared() < 0.0001f)
-        {
-            targetNormal = Vector3.Up;
-        }
-        else
-        {
-            targetNormal = targetNormal.Normalized();
-        }
-
-        if (_currentNormal.LengthSquared() < 0.0001f)
-        {
-            _currentNormal = Vector3.Up;
-        }
-        else
-        {
-            _currentNormal = _currentNormal.Normalized();
-        }
-
-        // Clamp max alignment, but only if both are normalized and nonzero
-        float angle = Mathf.RadToDeg(_currentNormal.AngleTo(targetNormal));
-        if (angle > NormalRotationAngleMax)
-        {
-            float t = NormalRotationAngleMax / angle;
-            if (_currentNormal.LengthSquared() < 0.99f || _currentNormal.LengthSquared() > 1.01f)
+            Vector3 n = Ray.GetCollisionNormal();
+            if (n.LengthSquared() > 0.1f)
             {
-                _currentNormal = _currentNormal.Normalized();
-            }
-            if (targetNormal.LengthSquared() < 0.99f || targetNormal.LengthSquared() > 1.01f)
-            {
-                targetNormal = targetNormal.Normalized();
-            }
-            
-            // Only slerp if both are valid, else hard snap.
-            if (_currentNormal.LengthSquared() > 0.999f && targetNormal.LengthSquared() > 0.999f)
-            {
-                // Godot C# wants mathematically normalized
-                targetNormal = _currentNormal.Slerp(targetNormal, t).Normalized();
+                targetNormal = n.Normalized();
+                _lastValidNormal = targetNormal; // Cache for fallback
             }
             else
             {
-                targetNormal = Vector3.Up;
+                targetNormal = _lastValidNormal;
             }
-        }
-
-        // Now smooth the normal toward the target one, again with full guards
-        if (_currentNormal.LengthSquared() > 0.999f && targetNormal.LengthSquared() > 0.999f)
-        {
-            _currentNormal = _currentNormal.Slerp(targetNormal, 1.0f - Mathf.Exp(-NormalRotationSpeed * (float)delta));
-            _currentNormal = _currentNormal.Normalized();
         }
         else
         {
-            _currentNormal = targetNormal.Normalized();
+            // Off ground: use last valid normal, unless it's degenerate
+            if (_lastValidNormal.LengthSquared() < 0.1f)
+                _lastValidNormal = Vector3.Up;
+            targetNormal = _lastValidNormal;
         }
 
-        // Visual basis calculation as before
-        Vector3 forward = -GlobalTransform.Basis.Z;
-        Vector3 right = _currentNormal.Cross(forward).Normalized();
+        // Always ensure target is normalized
+        targetNormal = targetNormal.Normalized();
 
-        // Handle degenerate cross for perfectly vertical
-        if (right.LengthSquared() < 0.001f)
+        // Defensive: _currentNormal should always be valid
+        if (_currentNormal.LengthSquared() < 0.1f)
         {
-            right = GlobalTransform.Basis.X;
+            _currentNormal = Vector3.Up;
+        }
+        _currentNormal = _currentNormal.Normalized();
+
+        // --- Slerp with guards against anti-parallel (flipping), degenerate, or parallel cases ---
+        float dp = _currentNormal.Dot(targetNormal);
+        float currentAngleRad = _currentNormal.AngleTo(targetNormal);
+        float currentAngleDeg = Mathf.RadToDeg(currentAngleRad);
+
+        // Handle near-parallel (avoids zero-length axis in Slerp internal cross product)
+        if (Mathf.Abs(dp) > 0.999f || currentAngleRad < Mathf.DegToRad(0.01f))
+        {
+            _currentNormal = targetNormal;
+        }
+        // If they're nearly opposite, snap instead of slerping (prevents wrong Lerp fallback)
+        else if (dp < -0.95f)
+        {
+            _currentNormal = targetNormal;
+        }
+        else
+        {
+            // Exponential approach weight (smooth deceleration near target)
+            float expoWeight = 1.0f - Mathf.Exp(-NormalRotationSpeed * (float)delta);
+
+            // Angular speed limit: max rotation rate in rad/sec
+            float maxAngularSpeedRadPerSec = NormalRotationAngleMax * Mathf.DegToRad(NormalRotationAngleMax);
+            float maxDeltaRad = maxAngularSpeedRadPerSec * (float)delta;
+            float maxWeight = (currentAngleRad > 0.001f) ? Mathf.Min(1.0f, maxDeltaRad / currentAngleRad) : 1.0f;
+
+            // Use the minimum: respects both smooth approach and max speed
+            float slerpWeight = Mathf.Min(expoWeight, maxWeight);
+
+            _currentNormal = _currentNormal.Slerp(targetNormal, slerpWeight);
+            _currentNormal = _currentNormal.Normalized(); // Always normalize after
         }
 
-        Vector3 newForward = right.Cross(_currentNormal).Normalized();
-        Basis meshBasis = new Basis(right, _currentNormal, newForward);
+        // --- Basis construction: Align mesh Y to normal, Z to kart forward (projected) ---
+        // Project kart forward onto plane perpendicular to normal (avoids gimbal issues)
+        Vector3 projectedForward = kartForward - _currentNormal.Dot(kartForward) * _currentNormal;
+        if (projectedForward.LengthSquared() > 0.001f)
+        {
+            projectedForward = projectedForward.Normalized();
+        }
+        else
+        {
+            // Fallback: choose a direction perpendicular to normal, preferring kart's right for consistency
+            projectedForward = _currentNormal.Cross(kartRight).Normalized();
+            if (projectedForward.LengthSquared() < 0.001f)
+            {
+                // Double fallback: arbitrary but stable
+                projectedForward = _currentNormal.Cross(Vector3.Forward).Normalized();
+            }
+        }
+        
+        // Build orthonormal basis: Z = projected forward, Y = normal, X = Y cross Z (right-handed)
+        Vector3 meshZ = projectedForward;
+        Vector3 meshY = _currentNormal;
+        Vector3 meshX = meshY.Cross(meshZ).Normalized();
+        
+        // Defensive check for degenerate X (should be rare after projection)
+        if (meshX.LengthSquared() < 0.001f)
+        {
+            meshX = Vector3.Right; // Arbitrary stable fallback
+            // Re-orthogonalize Z if needed: Z = X cross Y
+            meshZ = meshX.Cross(meshY).Normalized();
+        }
+        
+        // Ensure the basis Y aligns positively with _currentNormal (flip if inverted)
+        if (meshY.Dot(_currentNormal) < 0.0f)
+        {
+            meshX = -meshX;
+            meshZ = -meshZ;
+            meshY = -meshY;
+        }
+        
+        Basis meshBasis = new Basis(meshX, meshY, meshZ);
 
-        // Apply transform to mesh (local visual effect only)
         Mesh.Transform = new Transform3D(meshBasis, meshOrigin);
     }
 }

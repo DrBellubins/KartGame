@@ -1,6 +1,7 @@
-[gd_scene load_steps=13 format=3 uid="uid://ht5x8s4lq2x0"]
+[gd_scene load_steps=14 format=3 uid="uid://ht5x8s4lq2x0"]
 
 [ext_resource type="Material" uid="uid://mvl1qs1x0dus" path="res://Materials/Checkerboard.tres" id="1_3dogw"]
+[ext_resource type="Script" uid="uid://c3f8xo72d26vk" path="res://Scripts/Kart/SmoothFollowCamera.cs" id="2_hb2xm"]
 [ext_resource type="Script" uid="uid://dkvjuuucyv6oq" path="res://Scripts/Kart/HoverKart.cs" id="2_r5l72"]
 [ext_resource type="Script" uid="uid://dhxnks45ng5td" path="res://Scripts/Kart/HoverBooster.cs" id="3_50ct6"]
 
@@ -66,11 +67,25 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 0)
 material_override = ExtResource("1_3dogw")
 mesh = SubResource("BoxMesh_6w285")
 
+[node name="Camera3D" type="Camera3D" parent="." node_paths=PackedStringArray("Target")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.75, 2)
+script = ExtResource("2_hb2xm")
+Target = NodePath("../TestKart")
+Distance = 2.0
+Height = 0.5
+
 [node name="TestKart" type="RigidBody3D" parent="." node_paths=PackedStringArray("Boosters")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2070642, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.05734092, 1.2070642, 0)
 custom_integrator = true
 script = ExtResource("2_r5l72")
-GravityStrength = 2.0
+Speed = 50.0
+MaxSpeed = 200.0
+Traction = 2.0
+BoosterRayLength = 0.4
+BoosterSpringStrength = 10000.0
+BoosterSpringDamp = 1000.0
+m_LinearDamp = 0.5
+m_AngularDamp = 0.05
 Boosters = [NodePath("FrontLeftBooster"), NodePath("FrontRightBooster"), NodePath("BackLeftBooster"), NodePath("BackRightBooster")]
 
 [node name="BodyMesh" type="MeshInstance3D" parent="TestKart"]
@@ -81,50 +96,53 @@ mesh = SubResource("CapsuleMesh_3dogw")
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0.107255846, 0)
 shape = SubResource("CapsuleShape3D_3dogw")
 
-[node name="FrontLeftBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("Ray")]
+[node name="FrontLeftBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("Ray", "Mesh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25, -0.25, -0.5)
 script = ExtResource("3_50ct6")
+IsFront = true
 Ray = NodePath("Ray")
+Mesh = NodePath("Mesh")
 
 [node name="Mesh" type="MeshInstance3D" parent="TestKart/FrontLeftBooster"]
 mesh = SubResource("CylinderMesh_3dogw")
 
 [node name="Ray" type="RayCast3D" parent="TestKart/FrontLeftBooster"]
 
-[node name="FrontRightBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("Ray")]
+[node name="FrontRightBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("Ray", "Mesh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, -0.25, -0.5)
 script = ExtResource("3_50ct6")
+IsFront = true
 Ray = NodePath("Ray")
+Mesh = NodePath("Mesh")
 
 [node name="Mesh" type="MeshInstance3D" parent="TestKart/FrontRightBooster"]
 mesh = SubResource("CylinderMesh_3dogw")
 
 [node name="Ray" type="RayCast3D" parent="TestKart/FrontRightBooster"]
 
-[node name="BackLeftBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("Ray")]
+[node name="BackLeftBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("Ray", "Mesh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25, -0.25, 0.5)
 script = ExtResource("3_50ct6")
 Ray = NodePath("Ray")
+Mesh = NodePath("Mesh")
 
 [node name="Mesh" type="MeshInstance3D" parent="TestKart/BackLeftBooster"]
 mesh = SubResource("CylinderMesh_3dogw")
 
 [node name="Ray" type="RayCast3D" parent="TestKart/BackLeftBooster"]
 
-[node name="BackRightBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("Ray")]
+[node name="BackRightBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("Ray", "Mesh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, -0.25, 0.5)
 script = ExtResource("3_50ct6")
 Ray = NodePath("Ray")
+Mesh = NodePath("Mesh")
 
 [node name="Mesh" type="MeshInstance3D" parent="TestKart/BackRightBooster"]
 mesh = SubResource("CylinderMesh_3dogw")
 
 [node name="Ray" type="RayCast3D" parent="TestKart/BackRightBooster"]
 
-[node name="Camera3D" type="Camera3D" parent="TestKart"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 1.75)
-
 [node name="CSGBox3D" type="CSGBox3D" parent="."]
-transform = Transform3D(0.9037018, 0, 0.42816243, 0, 1, 0, -0.42816243, 0, 0.9037018, -0.05151373, -0.32617176, 0.2984352)
+transform = Transform3D(0.9999992, 0, 0.0012566447, -0.00043313488, 0.93872184, 0.34467542, -0.0011796398, -0.3446757, 0.9387211, 0.009941995, -0.32617176, -0.04090607)
 use_collision = true
 size = Vector3(1, 0.34765625, 1.7628174)

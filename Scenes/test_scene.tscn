@@ -102,6 +102,7 @@ script = ExtResource("3_50ct6")
 IsFront = true
 Ray = NodePath("Ray")
 Mesh = NodePath("Mesh")
+NormalRotationSpeed = 0.0
 
 [node name="Mesh" type="MeshInstance3D" parent="TestKart/FrontLeftBooster"]
 mesh = SubResource("CylinderMesh_3dogw")
