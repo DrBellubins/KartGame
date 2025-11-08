@@ -27,46 +27,47 @@ public partial class HoverBooster : Node3D
         float hitDist = Ray.Enabled && Ray.IsColliding()
             ? GlobalTransform.Origin.DistanceTo(Ray.GetCollisionPoint())
             : 0f;
-        
+
         // Bobbing: offset along local Y axis based on how close the booster is to the surface
-        // Closer = lower offset, further = higher offset (max out at DistanceBobbingMax)
         float targetYOffset = 0f;
 
         if (Ray.Enabled && Ray.IsColliding())
         {
-            // Linearly map 0..Ray.TargetPosition.Length() to 0..DistanceBobbingMax
             float rayLen = Ray.TargetPosition.Length();
             float ratio = Mathf.Clamp((rayLen - hitDist) / rayLen, 0.0f, 1.0f);
-            
+
             targetYOffset = ratio * DistanceBobbingMax;
         }
 
         // Smooth interpolation for bobbing
         _currentZOffset = Mathf.Lerp(_currentZOffset, targetYOffset, 1.0f - Mathf.Exp(-DistanceBobbingSpeed * (float)delta));
 
-        // Animation: Move the mesh locally along its up axis (local Y) by _currentZOffset
         Vector3 meshOrigin = Vector3.Zero + (Vector3.Up * _currentZOffset);
 
         // Determine desired normal (for mesh alignment)
         Vector3 targetNormal = Vector3.Up;
 
         if (Ray.Enabled && Ray.IsColliding())
-        {
             targetNormal = Ray.GetCollisionNormal().Normalized();
-        }
+
+        // Ensure normals are normalized before using Slerp.
+        _currentNormal = _currentNormal.Normalized();
+        targetNormal = targetNormal.Normalized();
 
         // Clamp the max alignment angle for visuals
         float angle = Mathf.RadToDeg(_currentNormal.AngleTo(targetNormal));
-        
+
         if (angle > NormalRotationAngleMax)
         {
             // Limit excessive snapping/tilting
-            targetNormal = _currentNormal.Slerp(targetNormal, NormalRotationAngleMax / angle);
+            float t = NormalRotationAngleMax / angle;
+            
+            // Slerp requires normalized vectors, so explicitly normalize after too to avoid drift
+            targetNormal = _currentNormal.Slerp(targetNormal, t).Normalized();
         }
 
         // Smooth the normal for smooth rotation
-        _currentNormal = _currentNormal.Slerp(targetNormal, 1.0f - Mathf.Exp(-NormalRotationSpeed * (float)delta));
-        _currentNormal = _currentNormal.Normalized();
+        _currentNormal = _currentNormal.Slerp(targetNormal, 1.0f - Mathf.Exp(-NormalRotationSpeed * (float)delta)).Normalized();
 
         // Build the mesh's local basis: Y = up/normal, X = right, Z = forward
         Vector3 forward = -GlobalTransform.Basis.Z;
@@ -74,9 +75,7 @@ public partial class HoverBooster : Node3D
 
         // If right vector is degenerate (booster perfectly vertical), choose fallback
         if (right.LengthSquared() < 0.001f)
-        {
             right = GlobalTransform.Basis.X;
-        }
 
         Vector3 newForward = right.Cross(_currentNormal).Normalized();
         Basis meshBasis = new Basis(right, _currentNormal, newForward);
