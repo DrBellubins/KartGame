@@ -124,25 +124,16 @@ public partial class HoverKart : RigidBody3D
             {
                 // Dampen sideways movement
             }
-            else
-            {
-                // Freely drift sideways
-            }
             
             // Apply drive force (adds to velocity like boosters do)
-            kartVelocity += (driveForce / Mass) * step; // Already multiplied by Mass, so just Acceleration*step would work too
+            kartVelocity += (driveForce / Mass) * step;
         }
 
         kartVelocity +=  (totalBoosterForce / Mass) * step;
         kartTorque += (totalBoosterTorque / Mass) * step * 0.1f;
         
-        // Manually integrate booster forces into velocity (like gravity)
-        // Force / mass * step for linear; torque / inertia for angular (simplified; assumes diagonal inertia)
         state.LinearVelocity = kartVelocity;
-        
-        // Note: For full angular integration, you'd need state.PrincipalInertiaAxes and tensor math.
-        // For now, add torque directly to angular velocity (tune multiplier as needed for stability)
-        state.AngularVelocity = kartTorque;  // Scaled down to avoid over-rotation
+        state.AngularVelocity = kartTorque;
     }
 
     private void applyBosterForce(PhysicsDirectBodyState3D state, HoverBooster booster, ref Vector3 totalBoosterForce, ref Vector3 totalBoosterTorque)
