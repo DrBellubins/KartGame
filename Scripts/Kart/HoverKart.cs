@@ -23,6 +23,7 @@ public partial class HoverKart : RigidBody3D
     [ExportCategory("Kart objects")]
     [Export] public Godot.Collections.Array<HoverBooster> Boosters;
 
+    private bool drifting = false;
     private Vector2 inputAxis = Vector2.Zero;
     
     public override void _Ready()
@@ -40,17 +41,19 @@ public partial class HoverKart : RigidBody3D
 
     public override void _Process(double delta)
     {
-        inputAxis = new Vector2(Input.GetAxis("backward", "forward"),
-            Input.GetAxis("left", "right"));
-        
+        inputAxis = new Vector2(Input.GetAxis("right", "left"),
+            Input.GetAxis("backward", "forward"));
+
+        drifting = Input.IsActionPressed("drift");
+
         // Update booster positions up and down depending on hit distance with min-max to be spring-like
         // This is just visual, so not implemented yet. Core physics is in _IntegrateForces.
 
-        foreach (var booster in Boosters)
+        /*foreach (var booster in Boosters)
         {
             Color color = booster.Ray.IsColliding() ? new Color(255, 0, 0) : new Color(0, 0, 255);
             DebugDraw3D.DrawLine(booster.GlobalPosition, booster.GlobalPosition + booster.Ray.TargetPosition, color);
-        }
+        }*/
     }
 
     public override void _IntegrateForces(PhysicsDirectBodyState3D state)
@@ -86,6 +89,40 @@ public partial class HoverKart : RigidBody3D
             }
 
             applyBosterForce(state, booster, ref totalBoosterForce, ref totalBoosterTorque);
+        }
+        
+        // 4. Movement (add kart driving force based on inputAxis)
+        // inputAxis.X = left/right (steering)
+        // inputAxis.Y = forward/back
+        if (inputAxis.LengthSquared() > 0.0001f)
+        {
+            // Forward/backward movement along kart's local "forward" (usually -Z)
+            Vector3 forward = -GlobalTransform.Basis.Z.Normalized();
+            Vector3 right = GlobalTransform.Basis.X.Normalized();
+
+            // Calculate drive force
+            float driveInput = inputAxis.Y; // Godot: Y is forward
+            Vector3 driveForce = forward * driveInput * Acceleration * Mass; // F = ma
+
+            // Apply drive force (adds to velocity like boosters do)
+            state.LinearVelocity += (driveForce / Mass) * step; // Already multiplied by Mass, so just Acceleration*step would work too
+
+            // Steering: apply torque to turn (around local up)
+            float steerInput = inputAxis.X;
+            
+            if (Mathf.Abs(steerInput) > 0.01f)
+            {
+                Vector3 up = GlobalTransform.Basis.Y.Normalized();
+                float steerAmount = steerInput * Handling; // Scale by handling stat
+
+                // Apply torque for steering (add a "spin" to the kart around up axis)
+                // You can tweak the divisor for tuning how quick it turns.
+                
+                if (drifting)
+                    state.AngularVelocity += up * steerAmount * step;
+                else
+                    // forward booster relative steering
+            }
         }
 
         // Manually integrate booster forces into velocity (like gravity)

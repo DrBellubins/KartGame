@@ -81,8 +81,8 @@ script = ExtResource("2_r5l72")
 BoosterRayLength = 0.4
 BoosterSpringStrength = 10000.0
 BoosterSpringDamp = 1000.0
-m_LinearDamp = 0.2
-m_AngularDamp = 0.5
+m_LinearDamp = 0.5
+m_AngularDamp = 0.05
 Boosters = [NodePath("FrontLeftBooster"), NodePath("FrontRightBooster"), NodePath("BackLeftBooster"), NodePath("BackRightBooster")]
 
 [node name="BodyMesh" type="MeshInstance3D" parent="TestKart"]
