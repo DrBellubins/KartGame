@@ -23,6 +23,8 @@ public partial class HoverKart : RigidBody3D
     [ExportCategory("Kart objects")]
     [Export] public Godot.Collections.Array<HoverBooster> Boosters;
 
+    private Vector2 inputAxis = Vector2.Zero;
+    
     public override void _Ready()
     {
         Mass = Weight;
@@ -38,6 +40,9 @@ public partial class HoverKart : RigidBody3D
 
     public override void _Process(double delta)
     {
+        inputAxis = new Vector2(Input.GetAxis("backward", "forward"),
+            Input.GetAxis("left", "right"));
+        
         // Update booster positions up and down depending on hit distance with min-max to be spring-like
         // This is just visual, so not implemented yet. Core physics is in _IntegrateForces.
 
@@ -50,100 +55,86 @@ public partial class HoverKart : RigidBody3D
 
     public override void _IntegrateForces(PhysicsDirectBodyState3D state)
     {
-        // 1. Gravity (omni-directional)
+        float step = (float)state.Step;
+
+        // 1. Gravity (omni-directional): Manually add to velocity
         Vector3 gravity = GravityDirection.Normalized() * GravityStrength;
-        state.LinearVelocity += gravity * (float)state.Step;
+        state.LinearVelocity += gravity * step;
 
         // 2. Damping (manual; Godot does NOT handle this for custom integrator)
         Vector3 curVel = state.LinearVelocity;
-        float linDamp = LinearDamp * (float)state.Step;
+        float linDamp = LinearDamp * step;
         curVel -= curVel * linDamp;
         state.LinearVelocity = curVel;
 
         Vector3 curAngVel = state.AngularVelocity;
-        float angDamp = AngularDamp * (float)state.Step;
+        float angDamp = AngularDamp * step;
         curAngVel -= curAngVel * angDamp;
         state.AngularVelocity = curAngVel;
 
-        // 3. Boosters (spring + damper)
+        // 3. Boosters (spring + damper): Manually integrate forces into velocity
+        // (Accumulate total booster force/torque for simplicity; apply at end)
+        Vector3 totalBoosterForce = Vector3.Zero;
+        Vector3 totalBoosterTorque = Vector3.Zero;
+
         foreach (var booster in Boosters)
-            ApplyBoosterForce(state, booster);
-    }
-    
-    private void ApplyBoosterForce(PhysicsDirectBodyState3D state, HoverBooster booster)
-    {
-        if (booster == null || booster.Ray == null)
         {
-            return;
+            // Null check
+            if (booster == null || booster.Ray == null)
+            {
+                continue;
+            }
+
+            // Only boost when ray hits something
+            if (booster.Ray.IsColliding())
+            {
+                // Get booster world position
+                Vector3 boosterWorldPos = booster.GlobalTransform.Origin;
+
+                // Get surface hit position and normal (use normal for curved surfaces; fallback to -gravity)
+                Vector3 hitPoint = booster.Ray.GetCollisionPoint();
+                Vector3 surfaceNormal = booster.Ray.GetCollisionNormal();
+                Vector3 springDir = surfaceNormal.Length() > 0 ? surfaceNormal.Normalized() : (-GravityDirection.Normalized());
+
+                // Calculate distance from booster to surface
+                float hitDistance = boosterWorldPos.DistanceTo(hitPoint);
+
+                // Spring displacement: positive means we need to push away from surface
+                float displacement = BoosterRayLength - hitDistance;
+                displacement = Mathf.Clamp(displacement, 0f, BoosterRayLength);  // Prevent pulling down if ray misses slightly
+
+                // The local position of the booster, from kart center (for torque)
+                Vector3 localBoosterPos = boosterWorldPos - GlobalTransform.Origin;
+
+                // Get the velocity (linear) at the booster location
+                Vector3 boosterVelocity = state.GetVelocityAtLocalPosition(localBoosterPos);
+
+                // Project velocity onto spring direction to get component away from surface
+                float relativeSpeed = boosterVelocity.Dot(springDir);
+
+                // Spring force using Hooke's law
+                float springForce = displacement * BoosterSpringStrength;
+
+                // Damping force to prevent oscillation
+                float dampForce = -relativeSpeed * BoosterSpringDamp;
+
+                // Total force to apply: away from surface toward desired hover point
+                Vector3 boosterForce = springDir * (springForce + dampForce);
+
+                // Accumulate central force
+                totalBoosterForce += boosterForce;
+
+                // Accumulate torque (force cross local position)
+                totalBoosterTorque += localBoosterPos.Cross(boosterForce);
+            }
         }
 
-        if (booster.Ray.IsColliding())
-        {
-            Vector3 up = -GravityDirection.Normalized();
-
-            Vector3 offset = booster.GlobalTransform.Origin - GlobalTransform.Origin;
+        // Manually integrate booster forces into velocity (like gravity)
+        // Force / mass * step for linear; torque / inertia for angular (simplified; assumes diagonal inertia)
+        state.LinearVelocity += (totalBoosterForce / Mass) * step;
         
-            GD.Print($"ApplyForce: force={up * 10000f}, offset={offset}, mass={Mass}");
-
-            state.ApplyForce(up * 10000f, offset);
-        }
+        // Note: For full angular integration, you'd need state.PrincipalInertiaAxes and tensor math.
+        // For now, add torque directly to angular velocity (tune multiplier as needed for stability)
+        state.AngularVelocity += (totalBoosterTorque / Mass) * step * 0.1f;  // Scaled down to avoid over-rotation
     }
-
-    /*private void ApplyBoosterForce(PhysicsDirectBodyState3D state, HoverBooster booster)
-    {
-        // Null check
-        if (booster == null || booster.Ray == null)
-        {
-            return;
-        }
-
-        // Only boost when ray hits something
-        if (booster.Ray.IsColliding())
-        {
-            // Get booster world position
-            Vector3 boosterWorldPos = booster.GlobalTransform.Origin;
-
-            // Get surface hit position
-            Vector3 hitPoint = booster.Ray.GetCollisionPoint();
-
-            // Calculate distance from booster to surface
-            float hitDistance = boosterWorldPos.DistanceTo(hitPoint);
-
-            // Spring displacement: positive means we need to push upward
-            float displacement = BoosterRayLength - hitDistance;
-
-            // Correct spring direction: local TargetPosition in world space
-            //Vector3 springDir = booster.GlobalTransform.Basis * booster.Ray.TargetPosition.Normalized();
-            
-            Vector3 springDir = GravityDirection.Normalized() * -1.0f; // Always up, opposite of gravity
-            
-            // Ensure direction is normalized; flip if needed (should point up, away from surface)
-            springDir = springDir.Normalized();
-
-            // The local position of the booster, from kart center
-            Vector3 localBoosterPos = boosterWorldPos - GlobalTransform.Origin;
-
-            // Get the velocity (linear) at the booster location
-            Vector3 boosterVelocity = state.GetVelocityAtLocalPosition(localBoosterPos);
-
-            // Project velocity onto spring direction to get vertical component
-            float verticalSpeed = boosterVelocity.Dot(springDir);
-
-            // Spring force using Hooke's law
-            float springForce = displacement * BoosterSpringStrength;
-
-            // Damping force to prevent oscillation
-            float dampForce = -verticalSpeed * BoosterSpringDamp;
-
-            // Total force to apply: up toward desired hover point
-            Vector3 totalForce = springDir * (springForce + dampForce);
-            
-            // Apply the force at the location of the booster
-            //state.ApplyForce(totalForce, localBoosterPos);
-            
-            Vector3 up = -GravityDirection.Normalized();
-            state.LinearVelocity = up * 10f;
-            state.ApplyForce(up * 10000f, boosterWorldPos - GlobalTransform.Origin);
-        }
-    }*/
 }
