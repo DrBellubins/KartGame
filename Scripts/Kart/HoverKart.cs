@@ -118,9 +118,30 @@ public partial class HoverKart : RigidBody3D
             
             // Forward/backward movement along kart's local "forward" (usually -Z)
             // Calculate drive force
-            float driveInput = inputAxis.Y; // Godot: Y is forward
-            Vector3 driveForce = forward * driveInput * Acceleration * Mass; // F = ma
+            float driveInput = inputAxis.Y;
+            
+            // Determine the forward driving force, modulated by Speed stat
+            float currentForwardSpeed = kartVelocity.Dot(forward);
 
+            // Only apply drive force if not exceeding Speed (stat)
+            float targetSpeed = Mathf.Min(Speed, MaxSpeed); // Respect the smaller of Speed and MaxSpeed
+
+            // If drive input is positive (forwards)
+            if (driveInput > 0 && currentForwardSpeed < targetSpeed)
+            {
+                // As you approach Speed, gradually reduce force
+                float speedFactor = Mathf.Clamp((targetSpeed - currentForwardSpeed) / targetSpeed,  0f, 1f);
+                Vector3 driveForce = forward * driveInput * Acceleration * Mass * speedFactor;
+                kartVelocity += (driveForce / Mass) * step;
+            }
+            else if (driveInput < 0 && currentForwardSpeed > -targetSpeed)
+            {
+                // Similarly, for reverse input (optional: might want a different reverse limit/stat)
+                float speedFactor = Mathf.Clamp((targetSpeed + currentForwardSpeed) / targetSpeed, 0f, 1f);
+                Vector3 driveForce = forward * driveInput * Acceleration * Mass * speedFactor;
+                kartVelocity += (driveForce / Mass) * step;
+            }
+            
             if (!drifting)
             {
                 // Project velocity onto right vector to get lateral (sideways) speed
@@ -136,10 +157,6 @@ public partial class HoverKart : RigidBody3D
                 // Apply damping: counteract the lateral velocity
                 kartVelocity -= lateralVel * sideDamp;
             }
-
-            
-            // Apply drive force (adds to velocity like boosters do)
-            kartVelocity += (driveForce / Mass) * step;
         }
 
         // Clamp to max speed, this might be universal for all karts
