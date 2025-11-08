@@ -1,6 +1,7 @@
-[gd_scene load_steps=13 format=3 uid="uid://ht5x8s4lq2x0"]
+[gd_scene load_steps=14 format=3 uid="uid://ht5x8s4lq2x0"]
 
 [ext_resource type="Material" uid="uid://mvl1qs1x0dus" path="res://Materials/Checkerboard.tres" id="1_3dogw"]
+[ext_resource type="Script" uid="uid://c3f8xo72d26vk" path="res://Scripts/Kart/SmoothFollowCamera.cs" id="2_hb2xm"]
 [ext_resource type="Script" uid="uid://dkvjuuucyv6oq" path="res://Scripts/Kart/HoverKart.cs" id="2_r5l72"]
 [ext_resource type="Script" uid="uid://dhxnks45ng5td" path="res://Scripts/Kart/HoverBooster.cs" id="3_50ct6"]
 
@@ -66,19 +67,22 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 0)
 material_override = ExtResource("1_3dogw")
 mesh = SubResource("BoxMesh_6w285")
 
-[node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(0.7071067, 0, -0.7071068, 0, 1, 0, 0.7071068, 0, 0.7071067, -2.575114, 0.70874786, 0.9363543)
+[node name="Camera3D" type="Camera3D" parent="." node_paths=PackedStringArray("Target")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.75, 2)
+script = ExtResource("2_hb2xm")
+Target = NodePath("../TestKart")
+Distance = 2.0
+Height = 0.5
 
 [node name="TestKart" type="RigidBody3D" parent="." node_paths=PackedStringArray("Boosters")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2070642, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.05734092, 1.2070642, 0)
 custom_integrator = true
 script = ExtResource("2_r5l72")
-GravityStrength = 2.0
-BoosterRayLength = 0.2
+BoosterRayLength = 0.4
 BoosterSpringStrength = 10000.0
-BoosterSpringDamp = 0.0
-m_LinearDamp = 0.1
-m_AngularDamp = 0.0
+BoosterSpringDamp = 1000.0
+m_LinearDamp = 0.2
+m_AngularDamp = 0.5
 Boosters = [NodePath("FrontLeftBooster"), NodePath("FrontRightBooster"), NodePath("BackLeftBooster"), NodePath("BackRightBooster")]
 
 [node name="BodyMesh" type="MeshInstance3D" parent="TestKart"]

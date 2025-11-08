@@ -85,48 +85,7 @@ public partial class HoverKart : RigidBody3D
                 continue;
             }
 
-            // Only boost when ray hits something
-            if (booster.Ray.IsColliding())
-            {
-                // Get booster world position
-                Vector3 boosterWorldPos = booster.GlobalTransform.Origin;
-
-                // Get surface hit position and normal (use normal for curved surfaces; fallback to -gravity)
-                Vector3 hitPoint = booster.Ray.GetCollisionPoint();
-                Vector3 surfaceNormal = booster.Ray.GetCollisionNormal();
-                Vector3 springDir = surfaceNormal.Length() > 0 ? surfaceNormal.Normalized() : (-GravityDirection.Normalized());
-
-                // Calculate distance from booster to surface
-                float hitDistance = boosterWorldPos.DistanceTo(hitPoint);
-
-                // Spring displacement: positive means we need to push away from surface
-                float displacement = BoosterRayLength - hitDistance;
-                displacement = Mathf.Clamp(displacement, 0f, BoosterRayLength);  // Prevent pulling down if ray misses slightly
-
-                // The local position of the booster, from kart center (for torque)
-                Vector3 localBoosterPos = boosterWorldPos - GlobalTransform.Origin;
-
-                // Get the velocity (linear) at the booster location
-                Vector3 boosterVelocity = state.GetVelocityAtLocalPosition(localBoosterPos);
-
-                // Project velocity onto spring direction to get component away from surface
-                float relativeSpeed = boosterVelocity.Dot(springDir);
-
-                // Spring force using Hooke's law
-                float springForce = displacement * BoosterSpringStrength;
-
-                // Damping force to prevent oscillation
-                float dampForce = -relativeSpeed * BoosterSpringDamp;
-
-                // Total force to apply: away from surface toward desired hover point
-                Vector3 boosterForce = springDir * (springForce + dampForce);
-
-                // Accumulate central force
-                totalBoosterForce += boosterForce;
-
-                // Accumulate torque (force cross local position)
-                totalBoosterTorque += localBoosterPos.Cross(boosterForce);
-            }
+            applyBosterForce(state, booster, ref totalBoosterForce, ref totalBoosterTorque);
         }
 
         // Manually integrate booster forces into velocity (like gravity)
@@ -136,5 +95,53 @@ public partial class HoverKart : RigidBody3D
         // Note: For full angular integration, you'd need state.PrincipalInertiaAxes and tensor math.
         // For now, add torque directly to angular velocity (tune multiplier as needed for stability)
         state.AngularVelocity += (totalBoosterTorque / Mass) * step * 0.1f;  // Scaled down to avoid over-rotation
+    }
+
+    private void applyBosterForce(PhysicsDirectBodyState3D state, HoverBooster booster, ref Vector3 totalBoosterForce, ref Vector3 totalBoosterTorque)
+    {
+        // Get booster world position
+        Vector3 boosterWorldPos = booster.GlobalTransform.Origin;
+
+        // Get surface hit position and normal (use normal for curved surfaces; fallback to -gravity)
+        Vector3 hitPoint = booster.Ray.GetCollisionPoint();
+        Vector3 surfaceNormal = booster.Ray.GetCollisionNormal();
+        Vector3 springDir = Vector3.Zero;
+        
+        // If ray hitting push up, else pull down.
+        if (booster.Ray.IsColliding())
+            springDir = surfaceNormal.Normalized();
+        else
+            springDir = -surfaceNormal.Normalized();
+
+        // Calculate distance from booster to surface
+        float hitDistance = boosterWorldPos.DistanceTo(hitPoint);
+
+        // Spring displacement: positive means we need to push away from surface
+        float displacement = BoosterRayLength - hitDistance;
+        displacement = Mathf.Clamp(displacement, 0f, BoosterRayLength);  // Prevent pulling down if ray misses slightly
+
+        // The local position of the booster, from kart center (for torque)
+        Vector3 localBoosterPos = boosterWorldPos - GlobalTransform.Origin;
+
+        // Get the velocity (linear) at the booster location
+        Vector3 boosterVelocity = state.GetVelocityAtLocalPosition(localBoosterPos);
+
+        // Project velocity onto spring direction to get component away from surface
+        float relativeSpeed = boosterVelocity.Dot(springDir);
+
+        // Spring force using Hooke's law
+        float springForce = displacement * BoosterSpringStrength;
+
+        // Damping force to prevent oscillation
+        float dampForce = -relativeSpeed * BoosterSpringDamp;
+
+        // Total force to apply: away from surface toward desired hover point
+        Vector3 boosterForce = springDir * (springForce + dampForce);
+
+        // Accumulate central force
+        totalBoosterForce += boosterForce;
+
+        // Accumulate torque (force cross local position)
+        totalBoosterTorque += localBoosterPos.Cross(boosterForce);
     }
 }
