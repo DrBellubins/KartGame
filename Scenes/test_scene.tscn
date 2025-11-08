@@ -78,6 +78,7 @@ Height = 0.5
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.05734092, 1.2070642, 0)
 custom_integrator = true
 script = ExtResource("2_r5l72")
+Traction = 2.0
 BoosterRayLength = 0.4
 BoosterSpringStrength = 10000.0
 BoosterSpringDamp = 1000.0

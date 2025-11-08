@@ -6,6 +6,7 @@ public partial class HoverKart : RigidBody3D
 {
     [ExportCategory("Kart specs")]
     [Export] public float Speed = 10f;
+    [Export] public float MaxSpeed = 20f;
     [Export] public float Acceleration = 10f;
     [Export] public float Weight = 125f;
     [Export] public float Handling = 5f;
@@ -122,13 +123,29 @@ public partial class HoverKart : RigidBody3D
 
             if (!drifting)
             {
-                // Dampen sideways movement
+                // Project velocity onto right vector to get lateral (sideways) speed
+                float lateralSpeed = kartVelocity.Dot(right);
+
+                // Calculate the lateral (sideways) velocity vector
+                Vector3 lateralVel = right * lateralSpeed;
+
+                // Determine damp factor (Traction controls how much is removed, can tune this)
+                // Higher Traction results in more aggressive correction
+                float sideDamp = Traction * step;
+
+                // Apply damping: counteract the lateral velocity
+                kartVelocity -= lateralVel * sideDamp;
             }
+
             
             // Apply drive force (adds to velocity like boosters do)
             kartVelocity += (driveForce / Mass) * step;
         }
 
+        // Clamp to max speed, this might be universal for all karts
+        if (state.LinearVelocity.Length() > MaxSpeed)
+            state.LinearVelocity = state.LinearVelocity.Normalized() * MaxSpeed;
+        
         kartVelocity +=  (totalBoosterForce / Mass) * step;
         kartTorque += (totalBoosterTorque / Mass) * step * 0.1f;
         
