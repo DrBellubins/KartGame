@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://sdswp7b8v0xl"]
+
+[sub_resource type="QuadMesh" id="QuadMesh_x8i47"]
+subdivide_width = 200
+subdivide_depth = 200
+orientation = 1
+
+[node name="WaterPlane" type="MeshInstance3D"]
+mesh = SubResource("QuadMesh_x8i47")
