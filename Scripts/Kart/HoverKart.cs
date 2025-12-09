@@ -11,15 +11,16 @@ public partial class HoverKart : RigidBody3D
     [Export] public float Weight = 125f;
     [Export] public float Handling = 5f;
     [Export] public float Traction = 5f;
+    [Export] public float StopDrag = 20f; // Controls deceleration when no drive input
 
     [ExportCategory("Kart physics")]
     [Export] public float GravityStrength = 9.81f;
     [Export] public Vector3 GravityDirection = new Vector3(0f, -1f, 0f);
-    [Export] public float BoosterRayLength = 0.5f;
-    [Export] public float BoosterMidPointDist = 0.25f;  // Equilibrium distance for hover; ray checks against this midpoint
-    [Export] public float BoosterSpringStrength = 400f;
-    [Export] public float BoosterSpringDamp = 30f;
-    [Export] public float m_LinearDamp = 2.5f;
+    [Export] public float BoosterSphereRadius = 1f; // Radius of sphere shape for overlap detection
+    [Export] public float BoosterMidPointDist = 0.25f; // Desired hover distance (equilibrium)
+    [Export] public float BoosterSpringStrength = 800f; // Increased for stability
+    [Export] public float BoosterSpringDamp = 50f;
+    [Export] public float m_LinearDamp = 1.5f;
     [Export] public float m_AngularDamp = 2.5f;
 
     [ExportCategory("Kart objects")]
@@ -40,12 +41,11 @@ public partial class HoverKart : RigidBody3D
         {
             if (booster?.ShapeCast != null)
             {
-                booster.ShapeCast.TargetPosition = new Vector3(0f, -BoosterRayLength, 0f);
+                booster.ShapeCast.TargetPosition = Vector3.Zero; // Overlap mode
+                // Assume SphereShape3D(radius = BoosterSphereRadius) set in editor
+                // Set MaxResults = 32 in editor for multi-collision support
             }
         }
-
-        // Note: Do not set LinearDamp/AngularDamp on the body, as we handle damping manually
-        // and the engine skips built-in damping in custom _IntegrateForces
 
         DebugDraw3D.ScopedConfig().SetThickness(0f).SetCenterBrightness(0.1f);
     }
@@ -60,103 +60,96 @@ public partial class HoverKart : RigidBody3D
 
     public override void _IntegrateForces(PhysicsDirectBodyState3D state)
     {
-        // Sync with current physics state velocities at the start of this step
-        // (Redundant if maintaining fields manually, but ensures sync if external changes occur)
         float step = (float)state.Step;
         kartVelocity = state.LinearVelocity;
         kartTorque = state.AngularVelocity;
 
-        // Apply physics steps in sequence to match original order
         ApplyGravity(step);
         ApplyDamping(step);
-        ApplyMovement(step);  // Apply movement before boosters to match original
-
-        // Clamp after movement but before boosters (original clamps old state ineffectively;
-        // this clamps the updated kartVelocity for intended behavior)
+        ApplyMovement(step);
         ClampMaxSpeed();
+        ApplyBoosterForces(state, step);
 
-        ApplyBoosterForces(state, step);  // Boosters last, as in original
-
-        // Update state with integrated values
         state.LinearVelocity = kartVelocity;
         state.AngularVelocity = kartTorque;
     }
 
-    // Applies omni-directional gravity to the kart's velocity
     private void ApplyGravity(float step)
     {
         Vector3 gravity = GravityDirection.Normalized() * GravityStrength;
         kartVelocity += gravity * step;
     }
 
-    // Applies manual linear and angular damping to prevent excessive motion
     private void ApplyDamping(float step)
     {
-        // Linear damping (exponential decay)
         float linDamp = m_LinearDamp * step;
         kartVelocity *= (1f - linDamp);
 
-        // Angular damping
         float angDamp = m_AngularDamp * step;
         kartTorque *= (1f - angDamp);
     }
 
-    // Handles input-based steering, driving, and traction (lateral damping unless drifting)
     private void ApplyMovement(float step)
     {
-        if (inputAxis.LengthSquared() <= 0.0001f)
-        {
-            return; // No input
-        }
-
         Vector3 forward = -GlobalTransform.Basis.Z.Normalized();
         Vector3 right = GlobalTransform.Basis.X.Normalized();
         Vector3 up = GlobalTransform.Basis.Y.Normalized();
 
-        // Steering: add angular velocity increment around local up
         float steerInput = inputAxis.X;
+        float driveInput = inputAxis.Y;
+        float currentForwardSpeed = kartVelocity.Dot(forward);
+        float targetSpeed = Mathf.Min(Speed, MaxSpeed);
+
+        // Steering (always processed if input present)
         if (Mathf.Abs(steerInput) > 0.01f)
         {
             float steerAmount = steerInput * Handling;
             kartTorque += up * steerAmount * step;
         }
 
-        // Driving: accelerate/decelerate along forward, respecting target speed
-        float driveInput = inputAxis.Y;
-        float currentForwardSpeed = kartVelocity.Dot(forward);
-        float targetSpeed = Mathf.Min(Speed, MaxSpeed); // Cruise speed limit
-
-        Vector3 driveForce = Vector3.Zero;
-        if (driveInput > 0f && currentForwardSpeed < targetSpeed)
+        // Driving or stop drag
+        if (Mathf.Abs(driveInput) > 0.01f)
         {
-            // Forward acceleration with speed ramping
-            float speedFactor = Mathf.Clamp((targetSpeed - currentForwardSpeed) / targetSpeed, 0f, 1f);
-            driveForce = forward * driveInput * Acceleration * Mass * speedFactor;
+            // Acceleration/deceleration
+            Vector3 driveForce = Vector3.Zero;
+            if (driveInput > 0f && currentForwardSpeed < targetSpeed)
+            {
+                float speedFactor = Mathf.Clamp((targetSpeed - currentForwardSpeed) / targetSpeed, 0f, 1f);
+                driveForce = forward * driveInput * Acceleration * Mass * speedFactor;
+            }
+            else if (driveInput < 0f && currentForwardSpeed > -targetSpeed)
+            {
+                float speedFactor = Mathf.Clamp((targetSpeed + currentForwardSpeed) / targetSpeed, 0f, 1f);
+                driveForce = forward * driveInput * Acceleration * Mass * speedFactor;
+            }
+
+            if (driveForce != Vector3.Zero)
+            {
+                kartVelocity += (driveForce / Mass) * step;
+            }
         }
-        else if (driveInput < 0f && currentForwardSpeed > -targetSpeed)
+        else
         {
-            // Reverse (symmetric for simplicity)
-            float speedFactor = Mathf.Clamp((targetSpeed + currentForwardSpeed) / targetSpeed, 0f, 1f);
-            driveForce = forward * driveInput * Acceleration * Mass * speedFactor;
+            // Stop drag: strong forward damping when no drive input
+            if (Mathf.Abs(currentForwardSpeed) > 0.1f)
+            {
+                Vector3 brakeAccel = -forward * currentForwardSpeed * StopDrag * step;
+                kartVelocity += brakeAccel;
+            }
         }
 
-        if (driveForce != Vector3.Zero)
-        {
-            kartVelocity += (driveForce / Mass) * step;
-        }
-
-        // Traction: damp lateral (sideways) velocity unless drifting
+        // Traction: damp lateral velocity unless drifting (always processed)
         if (!drifting)
         {
             float lateralSpeed = kartVelocity.Dot(right);
-            Vector3 lateralVel = right * lateralSpeed;
-            float sideDamp = Traction * step;
-            kartVelocity -= lateralVel * sideDamp;
+            if (Mathf.Abs(lateralSpeed) > 0.1f)
+            {
+                float sideDamp = Traction * step;
+                kartVelocity -= right * lateralSpeed * sideDamp;
+            }
         }
     }
 
-    // Clamps overall linear speed to MaxSpeed (absolute cap)
-    // Placed after movement to approximate original intent (clamps updated velocity)
     private void ClampMaxSpeed()
     {
         if (kartVelocity.Length() > MaxSpeed)
@@ -165,8 +158,6 @@ public partial class HoverKart : RigidBody3D
         }
     }
 
-    // Applies forces and torques from all hover boosters
-    // Only applies if ray collides; skips non-colliding boosters (no force when ray misses)
     private void ApplyBoosterForces(PhysicsDirectBodyState3D state, float step)
     {
         Vector3 totalForce = Vector3.Zero;
@@ -175,83 +166,116 @@ public partial class HoverKart : RigidBody3D
         foreach (var booster in Boosters)
         {
             if (booster?.ShapeCast == null)
-            {
-                continue; // Skip if null
-            }
+                continue;
 
             ApplySingleBoosterForce(state, booster, ref totalForce, ref totalTorque);
         }
 
-        // Integrate forces (F * dt / mass) and torques (approximate with mass scaling)
         kartVelocity += totalForce / Mass * step;
-        kartTorque += totalTorque / Mass * step * 0.1f; // 0.1f is a tuning factor for torque sensitivity
+        kartTorque += totalTorque / Mass * step * 0.1f;
     }
 
-    // Applies spring + damper force for a single booster and accumulates torque
-    // Refactored logic:
-    // - Only if ray collides (hit within BoosterRayLength): compute forces
-    // - BoosterRayLength: max ray cast distance
-    // - BoosterMidPointDist: equilibrium hover distance
-    // - If hitDistance < BoosterMidPointDist: push away from surface (+spring along surface normal)
-    // - If hitDistance > BoosterMidPointDist: pull toward surface (-spring along surface normal)
-    // - Damping always opposes separation velocity along surface normal for stability
-    // - No force if !colliding (ray misses entirely)
     private void ApplySingleBoosterForce(PhysicsDirectBodyState3D state, HoverBooster booster, ref Vector3 totalForce, ref Vector3 totalTorque)
     {
-        bool colliding = booster.ShapeCast.IsColliding();
-        if (!colliding)
+        booster.ShapeCast.ForceShapecastUpdate(); // Immediate overlap update
+
+        int collisionCount = booster.ShapeCast.GetCollisionCount();
+        if (collisionCount == 0)
         {
-            return; // No booster force if ray doesn't hit anything
+            ApplyVirtualBoosterForce(state, booster, ref totalForce, ref totalTorque);
+            return;
         }
 
         Vector3 boosterWorldPos = booster.GlobalPosition;
-        //Vector3 hitPoint = booster.ShapeCast.GetCollisionPoint();
-        //Vector3 surfaceNormal = booster.ShapeCast.GetCollisionNormal();
-        Vector3 hitPoint = Vector3.Zero;
-        Vector3 surfaceNormal = Vector3.Zero;
-
-        // Calculate actual hit distance
-        float hitDistance = boosterWorldPos.DistanceTo(hitPoint);
-
-        // Local position for velocity at point of contact (relative to kart; assumes booster is child)
         Vector3 localBoosterPos = booster.Position;
-
-        // Get the velocity at the booster location
         Vector3 boosterVelocity = state.GetVelocityAtLocalPosition(localBoosterPos);
+        Vector3 downDir = GravityDirection.Normalized();
 
-        // Surface direction: always away from surface (for consistent damping reference)
-        Vector3 surfaceDir = surfaceNormal.Normalized();
+        float minDist = float.MaxValue;
+        Vector3 closestNormal = Vector3.Zero;
+        bool hasRealCollision = false;
 
-        // Separation speed: positive if moving away from surface
-        float separationSpeed = boosterVelocity.Dot(surfaceDir);
-
-        // Spring force scalar: positive for push away, negative for pull toward
-        float springForce = 0f;
-        if (hitDistance < BoosterMidPointDist)
+        for (int i = 0; i < collisionCount; i++)
         {
-            // Too close: push away from surface
-            float displacement = BoosterMidPointDist - hitDistance;
-            springForce = displacement * BoosterSpringStrength;
+            Vector3 hitPoint = booster.ShapeCast.GetCollisionPoint(i);
+            Vector3 surfaceNormal = booster.ShapeCast.GetCollisionNormal(i).Normalized();
+
+            Vector3 relPos = hitPoint - boosterWorldPos;
+            float hitDist = relPos.Length();
+            if (hitDist >= BoosterSphereRadius)
+                continue; // Outside sphere
+
+            // Filter: only surfaces "below" (relPos projects downward)
+            float projDown = relPos.Dot(downDir);
+            if (projDown <= 0f)
+                continue;
+
+            // Closeness multiplier: linear falloff, strongest at center
+            float multiplier = Mathf.Max(0f, 1f - (hitDist / BoosterSphereRadius));
+
+            // Spring: negative displacement for attraction/repulsion
+            float displacement = hitDist - BoosterMidPointDist;
+            float springForce = -displacement * BoosterSpringStrength * multiplier;
+
+            // Damping: oppose relative velocity along normal (normal points toward booster)
+            float separationSpeed = boosterVelocity.Dot(surfaceNormal);
+            float dampForce = -separationSpeed * BoosterSpringDamp * multiplier;
+
+            Vector3 hitForce = surfaceNormal * (springForce + dampForce);
+
+            totalForce += hitForce;
+
+            // Accurate torque at hit point
+            Vector3 rHit = hitPoint - GlobalPosition;
+            totalTorque += rHit.Cross(hitForce);
+
+            hasRealCollision = true;
+
+            // Track closest for visuals
+            if (hitDist < minDist)
+            {
+                minDist = hitDist;
+                closestNormal = surfaceNormal;
+            }
         }
-        else if (hitDistance > BoosterMidPointDist)
+
+        // Virtual ground if no real collisions (ensures "stick" behavior)
+        if (!hasRealCollision)
         {
-            // Too far: pull toward surface
-            float displacement = hitDistance - BoosterMidPointDist;
-            springForce = -displacement * BoosterSpringStrength;
+            ApplyVirtualBoosterForce(state, booster, ref totalForce, ref totalTorque);
+            return;
         }
-        // Else: at equilibrium, zero spring force
 
-        // Damping force: opposes separation (pushes away if penetrating, pulls back if separating)
-        float dampForce = -separationSpeed * BoosterSpringDamp;
+        // Update visuals with real closest hit
+        booster.currentZOffset = minDist;
+        booster.currentNormal = closestNormal;
+    }
 
-        // Total force along surface normal
-        Vector3 boosterForce = surfaceDir * (springForce + dampForce);
+    private void ApplyVirtualBoosterForce(PhysicsDirectBodyState3D state, HoverBooster booster, ref Vector3 totalForce, ref Vector3 totalTorque)
+    {
+        Vector3 boosterWorldPos = booster.GlobalPosition;
+        Vector3 localBoosterPos = booster.Position;
+        Vector3 boosterVelocity = state.GetVelocityAtLocalPosition(localBoosterPos);
+        Vector3 downDir = GravityDirection.Normalized();
+        Vector3 surfaceNormal = -downDir; // Upward normal for virtual flat ground below
 
-        // Accumulate central force
+        float virtualDist = BoosterSphereRadius;
+        float virtualMultiplier = 0.3f; // Softer for virtual to prevent oscillation
+
+        float displacement = virtualDist - BoosterMidPointDist;
+        float springForce = -displacement * BoosterSpringStrength * virtualMultiplier;
+        float separationSpeed = boosterVelocity.Dot(surfaceNormal);
+        float dampForce = -separationSpeed * BoosterSpringDamp * virtualMultiplier;
+
+        Vector3 boosterForce = surfaceNormal * (springForce + dampForce);
+
         totalForce += boosterForce;
 
-        // Torque: r cross F (world space)
         Vector3 rWorld = boosterWorldPos - GlobalPosition;
         totalTorque += rWorld.Cross(boosterForce);
+
+        // Visuals: simulate distant hover
+        booster.currentZOffset = virtualDist;
+        booster.currentNormal = surfaceNormal;
     }
 }
