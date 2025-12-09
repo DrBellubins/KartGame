@@ -38,9 +38,9 @@ public partial class HoverKart : RigidBody3D
 
         foreach (var booster in Boosters)
         {
-            if (booster?.Ray != null)
+            if (booster?.ShapeCast != null)
             {
-                booster.Ray.TargetPosition = new Vector3(0f, -BoosterRayLength, 0f);
+                booster.ShapeCast.TargetPosition = new Vector3(0f, -BoosterRayLength, 0f);
             }
         }
 
@@ -174,7 +174,7 @@ public partial class HoverKart : RigidBody3D
 
         foreach (var booster in Boosters)
         {
-            if (booster?.Ray == null)
+            if (booster?.ShapeCast == null)
             {
                 continue; // Skip if null
             }
@@ -198,15 +198,17 @@ public partial class HoverKart : RigidBody3D
     // - No force if !colliding (ray misses entirely)
     private void ApplySingleBoosterForce(PhysicsDirectBodyState3D state, HoverBooster booster, ref Vector3 totalForce, ref Vector3 totalTorque)
     {
-        bool colliding = booster.Ray.IsColliding();
+        bool colliding = booster.ShapeCast.IsColliding();
         if (!colliding)
         {
             return; // No booster force if ray doesn't hit anything
         }
 
         Vector3 boosterWorldPos = booster.GlobalPosition;
-        Vector3 hitPoint = booster.Ray.GetCollisionPoint();
-        Vector3 surfaceNormal = booster.Ray.GetCollisionNormal();
+        //Vector3 hitPoint = booster.ShapeCast.GetCollisionPoint();
+        //Vector3 surfaceNormal = booster.ShapeCast.GetCollisionNormal();
+        Vector3 hitPoint = Vector3.Zero;
+        Vector3 surfaceNormal = Vector3.Zero;
 
         // Calculate actual hit distance
         float hitDistance = boosterWorldPos.DistanceTo(hitPoint);

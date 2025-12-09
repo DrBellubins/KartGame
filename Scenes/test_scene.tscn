@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://ht5x8s4lq2x0"]
+[gd_scene load_steps=14 format=3 uid="uid://ht5x8s4lq2x0"]
 
 [ext_resource type="Material" uid="uid://mvl1qs1x0dus" path="res://Materials/Checkerboard.tres" id="1_3dogw"]
 [ext_resource type="Script" uid="uid://c3f8xo72d26vk" path="res://Scripts/Kart/SmoothFollowCamera.cs" id="2_hb2xm"]
@@ -36,6 +36,9 @@ top_radius = 0.15
 bottom_radius = 0.15
 height = 0.1
 
+[sub_resource type="SphereShape3D" id="SphereShape3D_hb2xm"]
+radius = 1.0
+
 [node name="TestScene" type="Node3D"]
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
@@ -66,13 +69,13 @@ Distance = 2.0
 Height = 0.5
 
 [node name="TestKart" type="RigidBody3D" parent="." node_paths=PackedStringArray("Boosters")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.05734092, 0.08123428, -2.1368475)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.05734092, 1.3317182, -2.1368475)
 custom_integrator = true
 script = ExtResource("2_r5l72")
 Speed = 50.0
 MaxSpeed = 200.0
 Traction = 2.0
-BoosterRayLength = 0.4
+BoosterRayLength = 2.0
 BoosterSpringStrength = 10000.0
 BoosterSpringDamp = 1000.0
 m_LinearDamp = 0.5
@@ -87,11 +90,11 @@ mesh = SubResource("CapsuleMesh_3dogw")
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0.107255846, 0)
 shape = SubResource("CapsuleShape3D_3dogw")
 
-[node name="FrontLeftBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("Ray", "Mesh")]
+[node name="FrontLeftBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("ShapeCast", "Mesh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25, -0.25, -0.5)
 script = ExtResource("3_50ct6")
 IsFront = true
-Ray = NodePath("Ray")
+ShapeCast = NodePath("SphereCast")
 Mesh = NodePath("Mesh")
 
 [node name="Mesh" type="MeshInstance3D" parent="TestKart/FrontLeftBooster"]
@@ -99,11 +102,15 @@ mesh = SubResource("CylinderMesh_3dogw")
 
 [node name="Ray" type="RayCast3D" parent="TestKart/FrontLeftBooster"]
 
-[node name="FrontRightBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("Ray", "Mesh")]
+[node name="SphereCast" type="ShapeCast3D" parent="TestKart/FrontLeftBooster"]
+shape = SubResource("SphereShape3D_hb2xm")
+target_position = Vector3(0, 0, 0)
+
+[node name="FrontRightBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("ShapeCast", "Mesh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, -0.25, -0.5)
 script = ExtResource("3_50ct6")
 IsFront = true
-Ray = NodePath("Ray")
+ShapeCast = NodePath("SphereCast")
 Mesh = NodePath("Mesh")
 
 [node name="Mesh" type="MeshInstance3D" parent="TestKart/FrontRightBooster"]
@@ -111,10 +118,14 @@ mesh = SubResource("CylinderMesh_3dogw")
 
 [node name="Ray" type="RayCast3D" parent="TestKart/FrontRightBooster"]
 
-[node name="BackLeftBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("Ray", "Mesh")]
+[node name="SphereCast" type="ShapeCast3D" parent="TestKart/FrontRightBooster"]
+shape = SubResource("SphereShape3D_hb2xm")
+target_position = Vector3(0, 0, 0)
+
+[node name="BackLeftBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("ShapeCast", "Mesh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25, -0.25, 0.5)
 script = ExtResource("3_50ct6")
-Ray = NodePath("Ray")
+ShapeCast = NodePath("SphereCast")
 Mesh = NodePath("Mesh")
 
 [node name="Mesh" type="MeshInstance3D" parent="TestKart/BackLeftBooster"]
@@ -122,16 +133,24 @@ mesh = SubResource("CylinderMesh_3dogw")
 
 [node name="Ray" type="RayCast3D" parent="TestKart/BackLeftBooster"]
 
-[node name="BackRightBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("Ray", "Mesh")]
+[node name="SphereCast" type="ShapeCast3D" parent="TestKart/BackLeftBooster"]
+shape = SubResource("SphereShape3D_hb2xm")
+target_position = Vector3(0, 0, 0)
+
+[node name="BackRightBooster" type="Node3D" parent="TestKart" node_paths=PackedStringArray("ShapeCast", "Mesh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, -0.25, 0.5)
 script = ExtResource("3_50ct6")
-Ray = NodePath("Ray")
+ShapeCast = NodePath("SphereCast")
 Mesh = NodePath("Mesh")
 
 [node name="Mesh" type="MeshInstance3D" parent="TestKart/BackRightBooster"]
 mesh = SubResource("CylinderMesh_3dogw")
 
 [node name="Ray" type="RayCast3D" parent="TestKart/BackRightBooster"]
+
+[node name="SphereCast" type="ShapeCast3D" parent="TestKart/BackRightBooster"]
+shape = SubResource("SphereShape3D_hb2xm")
+target_position = Vector3(0, 0, 0)
 
 [node name="CSGBox3D" type="CSGBox3D" parent="."]
 transform = Transform3D(0.9999992, 0, 0.0012566447, -0.00043313488, 0.93872184, 0.34467542, -0.0011796398, -0.3446757, 0.9387211, 0.009941995, -0.32617176, -0.04090607)

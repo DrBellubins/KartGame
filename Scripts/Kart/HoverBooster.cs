@@ -5,7 +5,7 @@ public partial class HoverBooster : Node3D
 {
     [ExportCategory("Functional")]
     [Export] public bool IsFront;
-    [Export] public RayCast3D Ray;
+    [Export] public ShapeCast3D ShapeCast;
     [Export] public MeshInstance3D Mesh;
 
     [ExportCategory("Visual")]
@@ -21,7 +21,7 @@ public partial class HoverBooster : Node3D
 
     public override void _Process(double delta)
     {
-        if (Mesh == null || Ray == null)
+        if (Mesh == null || ShapeCast == null)
             return;
 
         // TODO: Hover booster animation.
