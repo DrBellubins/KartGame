@@ -15,6 +15,16 @@ sky_material = SubResource("PhysicalSkyMaterial_50ct6")
 background_mode = 2
 sky = SubResource("Sky_hb2xm")
 tonemap_mode = 4
+ssao_enabled = true
+glow_enabled = true
+glow_levels/1 = 0.1
+glow_levels/2 = 0.2
+glow_levels/3 = 0.4
+glow_levels/4 = 0.6
+glow_levels/5 = 0.8
+glow_levels/6 = 1.0
+glow_strength = 1.3
+glow_blend_mode = 4
 adjustment_enabled = true
 adjustment_contrast = 1.3
 
