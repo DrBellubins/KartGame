@@ -12,6 +12,7 @@ public partial class HoverKart : RigidBody3D
     [Export] public float Handling = 5f;
     [Export] public float Traction = 5f;
     [Export] public float StopDrag = 20f; // Controls deceleration when no drive input
+    [Export] public float RotationStopDrag = 20f; // Controls torque dampening when no drive input
 
     [ExportCategory("Kart physics")]
     [Export] public float GravityStrength = 9.81f;
@@ -100,11 +101,16 @@ public partial class HoverKart : RigidBody3D
         float currentForwardSpeed = kartVelocity.Dot(forward);
         float targetSpeed = Mathf.Min(Speed, MaxSpeed);
 
+        
         // Steering (always processed if input present)
         if (Mathf.Abs(steerInput) > 0.01f)
         {
             float steerAmount = steerInput * Handling;
             kartTorque += up * steerAmount * step;
+        }
+        else
+        {
+            // Use rotation stop drag here to stop rotation when not steering.
         }
 
         // Driving or stop drag
@@ -112,6 +118,7 @@ public partial class HoverKart : RigidBody3D
         {
             // Acceleration/deceleration
             Vector3 driveForce = Vector3.Zero;
+            
             if (driveInput > 0f && currentForwardSpeed < targetSpeed)
             {
                 float speedFactor = Mathf.Clamp((targetSpeed - currentForwardSpeed) / targetSpeed, 0f, 1f);
@@ -124,9 +131,7 @@ public partial class HoverKart : RigidBody3D
             }
 
             if (driveForce != Vector3.Zero)
-            {
                 kartVelocity += (driveForce / Mass) * step;
-            }
         }
         else
         {
@@ -142,6 +147,7 @@ public partial class HoverKart : RigidBody3D
         if (!drifting)
         {
             float lateralSpeed = kartVelocity.Dot(right);
+            
             if (Mathf.Abs(lateralSpeed) > 0.1f)
             {
                 float sideDamp = Traction * step;
@@ -153,9 +159,7 @@ public partial class HoverKart : RigidBody3D
     private void ClampMaxSpeed()
     {
         if (kartVelocity.Length() > MaxSpeed)
-        {
             kartVelocity = kartVelocity.Normalized() * MaxSpeed;
-        }
     }
 
     private void ApplyBoosterForces(PhysicsDirectBodyState3D state, float step)
@@ -180,6 +184,7 @@ public partial class HoverKart : RigidBody3D
         booster.ShapeCast.ForceShapecastUpdate(); // Immediate overlap update
 
         int collisionCount = booster.ShapeCast.GetCollisionCount();
+        
         if (collisionCount == 0)
         {
             ApplyVirtualBoosterForce(state, booster, ref totalForce, ref totalTorque);
@@ -207,6 +212,7 @@ public partial class HoverKart : RigidBody3D
 
             // Filter: only surfaces "below" (relPos projects downward)
             float projDown = relPos.Dot(downDir);
+            
             if (projDown <= 0f)
                 continue;
 

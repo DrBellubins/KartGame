@@ -97,6 +97,8 @@ script = ExtResource("3_50ct6")
 IsFront = true
 ShapeCast = NodePath("SphereCast")
 Mesh = NodePath("Mesh")
+BobbingSpeed = 4.0
+BobbingMax = 0.05
 
 [node name="Mesh" type="MeshInstance3D" parent="TestKart/FrontLeftBooster"]
 mesh = SubResource("CylinderMesh_3dogw")
@@ -111,6 +113,8 @@ script = ExtResource("3_50ct6")
 IsFront = true
 ShapeCast = NodePath("SphereCast")
 Mesh = NodePath("Mesh")
+BobbingSpeed = 4.0
+BobbingMax = 0.05
 
 [node name="Mesh" type="MeshInstance3D" parent="TestKart/FrontRightBooster"]
 mesh = SubResource("CylinderMesh_3dogw")
@@ -124,6 +128,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25, -0.25, 0.5)
 script = ExtResource("3_50ct6")
 ShapeCast = NodePath("SphereCast")
 Mesh = NodePath("Mesh")
+BobbingSpeed = 4.0
+BobbingMax = 0.05
 
 [node name="Mesh" type="MeshInstance3D" parent="TestKart/BackLeftBooster"]
 mesh = SubResource("CylinderMesh_3dogw")
@@ -137,6 +143,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, -0.25, 0.5)
 script = ExtResource("3_50ct6")
 ShapeCast = NodePath("SphereCast")
 Mesh = NodePath("Mesh")
+BobbingSpeed = 4.0
+BobbingMax = 0.05
 
 [node name="Mesh" type="MeshInstance3D" parent="TestKart/BackRightBooster"]
 mesh = SubResource("CylinderMesh_3dogw")
