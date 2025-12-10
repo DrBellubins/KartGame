@@ -76,6 +76,7 @@ MaxSpeed = 200.0
 Acceleration = 5.0
 Traction = 2.0
 StopDrag = 0.5
+RotationStopDrag = 2.0
 BoosterSphereRadius = 0.5
 BoosterSpringStrength = 10000.0
 BoosterSpringDamp = 1000.0

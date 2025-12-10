@@ -110,7 +110,16 @@ public partial class HoverKart : RigidBody3D
         }
         else
         {
-            // Use rotation stop drag here to stop rotation when not steering.
+            // Rotational stop drag
+            float angAroundUp = kartTorque.Dot(up);
+
+            if (Mathf.Abs(angAroundUp) > 0.0001f)
+            {
+                float stopFactor = RotationStopDrag * step;
+                stopFactor = Mathf.Clamp(stopFactor, 0f, 1f);
+
+                kartTorque -= up * angAroundUp * stopFactor;
+            }
         }
 
         // Driving or stop drag
